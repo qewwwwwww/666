@@ -1719,6 +1719,13 @@ function createUI()
         Callback = toggleFullMapAttack
     })
 
+    AttackTab:Button({
+        Title = "立即攻击（测试切换逻辑）",
+        Desc = "立即执行一次全图攻击，测试0.5秒自动切换功能",
+        Icon = "zap",
+        Callback = executeSingleFullMapAttack
+    })
+
     AttackTab:Slider({
         Title = "攻击范围",
         Desc = "设置全图攻击的搜索范围",
