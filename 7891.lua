@@ -9,7 +9,7 @@ end
 
 game.TextChatService.ChatWindowConfiguration.Enabled = true
 
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/qewwwwwww/666/blob/main/ui.lua"))()
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/qewwwwwww/666/main/ui.lua"))()
 local Confirmed = false
 
 -- 攻击系统状态管理
