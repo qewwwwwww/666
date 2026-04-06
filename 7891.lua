@@ -1,4 +1,4 @@
--- 自制脚本优化增强版 v4.2 - 全功能修复版
+-- 自制脚本优化增强版 v4.5 - 目标死亡传送功能
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -33,6 +33,21 @@ local attackSystem = {
         attackLoop = nil,
         active = false
     }
+}
+
+-- 新增：死亡状态跟踪
+local isPlayerDead = false
+
+-- 目标死亡处理系统
+local targetDeathSystem = {
+    teleportToSky = true,        -- 是否传送到天上
+    skyHeight = 1000,           -- 天上高度
+    waitForRespawn = true,      -- 等待目标复活
+    isInSky = false,            -- 是否在天上
+    skyPosition = nil,          -- 天上位置
+    lastCheckTime = 0,          -- 上次检查时间
+    lastSkyTeleportTime = 0,    -- 上次传送时间
+    skyTeleportCooldown = 2     -- 天上传送冷却
 }
 
 function loadPublicScript()
@@ -84,7 +99,10 @@ WindUI:Popup({
             "• 全图攻击、自动收集\n" ..
             "• 高射速、无冷却\n" ..
             "• 自动购买飞镖检测\n" ..
-            "• 双重条件切换:血量优先/0.5秒\n" ..
+            "• 护盾检测自动切换\n" ..
+            "• 死亡重生攻击保持\n" ..
+            "• 目标锁定系统\n" ..
+            "• 目标死亡传送功能\n" ..
             "• 所有高级功能\n\n" ..
             "🔓 公益版\n" ..
             "• SEHUB WYT免费版本\n" ..
@@ -362,11 +380,130 @@ function createUI()
     local inventory = v3item.inventory
     local melee = require(game:GetService("ReplicatedStorage").devv).load("ClientReplicator")
 
+    -- 护盾检测函数
+    local function hasShieldProtection(player)
+        if player and player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid then
+                for _, desc in pairs(player.Character:GetDescendants()) do
+                    if desc:IsA("ForceField") or 
+                       desc.Name:lower():find("shield") or 
+                       desc.Name:lower():find("保护") then
+                        return true
+                    end
+                end
+            end
+        end
+        return false
+    end
+    -- 目标死亡处理函数
+    local function handleTargetDeath(targetPlayer)
+        if not targetPlayer or not targetLockEnabled or not lockedTargetPlayer or targetPlayer ~= lockedTargetPlayer then
+            return false
+        end
+        
+        local character = targetPlayer.Character
+        if not character then
+            return false
+        end
+        
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then
+            return false
+        end
+        
+        local currentTime = tick()
+        
+        -- 检查冷却时间
+        if currentTime - targetDeathSystem.lastSkyTeleportTime < targetDeathSystem.skyTeleportCooldown then
+            return false
+        end
+        
+        -- 检查目标是否死亡
+        if humanoid.Health <= 0 then
+            print(string.format("锁定目标 %s 已死亡，血量: %.0f/%.0f", 
+                targetPlayer.Name, humanoid.Health, humanoid.MaxHealth))
+            
+            -- 传送到天上
+            if targetDeathSystem.teleportToSky and not targetDeathSystem.isInSky then
+                targetDeathSystem.isInSky = true
+                targetDeathSystem.lastSkyTeleportTime = currentTime
+                
+                -- 计算天上位置
+                local targetPosition = character.PrimaryPart and character.PrimaryPart.Position or character:GetPivot().Position
+                targetDeathSystem.skyPosition = Vector3.new(
+                    targetPosition.X,
+                    targetPosition.Y + targetDeathSystem.skyHeight,
+                    targetPosition.Z
+                )
+                
+                if HumanoidRootPart then
+                    HumanoidRootPart.CFrame = CFrame.new(targetDeathSystem.skyPosition)
+                    
+                    WindUI:Notify({
+                        Title = "☁️ 目标已死亡",
+                        Content = string.format("锁定目标 %s 已死亡\n已传送到天上等待复活\n高度: %d", 
+                            targetPlayer.Name, targetDeathSystem.skyHeight),
+                        Duration = 3,
+                        Icon = "cloud"
+                    })
+                    
+                    print(string.format("已传送到天上，高度: %d, 位置: (%.1f, %.1f, %.1f)", 
+                        targetDeathSystem.skyHeight,
+                        targetDeathSystem.skyPosition.X,
+                        targetDeathSystem.skyPosition.Y,
+                        targetDeathSystem.skyPosition.Z))
+                end
+            end
+            
+            -- 等待目标复活
+            if targetDeathSystem.waitForRespawn then
+                if currentTime - targetDeathSystem.lastCheckTime > 1 then
+                    targetDeathSystem.lastCheckTime = currentTime
+                    
+                    -- 检查目标是否复活
+                    if humanoid.Health > 0 then
+                        targetDeathSystem.isInSky = false
+                        targetDeathSystem.skyPosition = nil
+                        
+                        WindUI:Notify({
+                            Title = "✅ 目标已复活",
+                            Content = string.format("锁定目标 %s 已复活\n血量: %.0f/%.0f\n恢复攻击", 
+                                targetPlayer.Name, humanoid.Health, humanoid.MaxHealth),
+                            Duration = 2,
+                            Icon = "check"
+                        })
+                        
+                        print(string.format("目标 %s 已复活，血量: %.0f/%.0f", 
+                            targetPlayer.Name, humanoid.Health, humanoid.MaxHealth))
+                        return false
+                    end
+                end
+            end
+            return true
+        else
+            -- 目标存活，重置状态
+            if targetDeathSystem.isInSky then
+                targetDeathSystem.isInSky = false
+                targetDeathSystem.skyPosition = nil
+            end
+            return false
+        end
+    end
+    
+    -- 修改后的目标选择函数，支持锁定系统
     local function getOptimizedTargets(range, requireHead, weaponType)
         local allTargets = {}
         local now = tick()
+        
         for _, player in ipairs(Players:GetPlayers()) do
             if player == LocalPlayer then continue end
+            
+            -- 锁定系统检查
+            if targetLockEnabled and lockedTargetPlayer and player ~= lockedTargetPlayer then
+                continue
+            end
+            
             local character = player.Character
             if not character then continue end
             local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -380,6 +517,12 @@ function createUI()
                 local velocity = rootPart.Velocity.Magnitude
                 local speedFactor = velocity > 20 and 1.2 or 1.0
                 local priority = distanceFactor * speedFactor * _G.attackPriority
+                
+                -- 如果是锁定目标，大幅提高优先级
+                if player == lockedTargetPlayer then
+                    priority = priority + 10
+                end
+                
                 table.insert(allTargets, {
                     player = player,
                     character = character,
@@ -559,66 +702,56 @@ function createUI()
         
         return success
     end
-
+    
+    -- 修改后的全图目标选择函数，支持锁定系统
     local function getFullMapTargets()
         local targets = {}
         local now = tick()
         local myPosition = HumanoidRootPart and HumanoidRootPart.Position or Vector3.new(0, 0, 0)
         
-        if targetLockEnabled and lockedTargetPlayer then
-            local character = lockedTargetPlayer.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                local rootPart = character:FindFirstChild("HumanoidRootPart")
-                
-                if humanoid and humanoid.Health > 0 and rootPart then
-                    local distance = (myPosition - rootPart.Position).Magnitude
-                    table.insert(targets, {
-                        player = lockedTargetPlayer,
-                        character = character,
-                        humanoid = humanoid,
-                        rootPart = rootPart,
-                        distance = distance,
-                        health = humanoid.Health,
-                        maxHealth = humanoid.MaxHealth,
-                        priority = 9999,
-                        isImmune = false,
-                        lastAttackTime = 0
-                    })
-                end
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player == LocalPlayer then continue end
+            
+            -- 锁定系统检查
+            if targetLockEnabled and lockedTargetPlayer and player ~= lockedTargetPlayer then
+                continue
             end
-        else
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player == LocalPlayer then continue end
+            
+            local character = player.Character
+            if not character then continue end
+            
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            
+            if not humanoid or humanoid.Health <= fullMapMinTargetHealth or not rootPart then
+                continue
+            end
+            
+            local distance = (myPosition - rootPart.Position).Magnitude
+            if distance <= fullMapAttackRange then
+                local healthPercent = humanoid.Health / humanoid.MaxHealth
+                local hasShield = hasShieldProtection(player)
                 
-                local character = player.Character
-                if not character then continue end
+                local priority = (1.0 - healthPercent) + (hasShield and -0.5 or 0.5)
                 
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                local rootPart = character:FindFirstChild("HumanoidRootPart")
-                
-                if not humanoid or humanoid.Health <= fullMapMinTargetHealth or not rootPart then
-                    continue
+                -- 如果是锁定目标，大幅提高优先级
+                if player == lockedTargetPlayer then
+                    priority = priority + 10
                 end
                 
-                local distance = (myPosition - rootPart.Position).Magnitude
-                if distance <= fullMapAttackRange then
-                    local healthPercent = humanoid.Health / humanoid.MaxHealth
-                    local priority = 1.0 - healthPercent
-                    
-                    table.insert(targets, {
-                        player = player,
-                        character = character,
-                        humanoid = humanoid,
-                        rootPart = rootPart,
-                        distance = distance,
-                        health = humanoid.Health,
-                        maxHealth = humanoid.MaxHealth,
-                        priority = priority,
-                        isImmune = false,
-                        lastAttackTime = 0
-                    })
-                end
+                table.insert(targets, {
+                    player = player,
+                    character = character,
+                    humanoid = humanoid,
+                    rootPart = rootPart,
+                    distance = distance,
+                    health = humanoid.Health,
+                    maxHealth = humanoid.MaxHealth,
+                    priority = priority,
+                    hasShield = hasShield,
+                    isImmune = false,
+                    lastAttackTime = 0
+                })
             end
         end
         
@@ -853,22 +986,25 @@ function createUI()
         HumanoidRootPart.CFrame = CFrame.new(teleportPosition, targetRootPart.Position)
         return true
     end
-
     local function teleportCircleAroundTargetFullMap(targetRootPart, targetCharacter)
         if not targetRootPart or not HumanoidRootPart then
             return false
         end
+        
         local targetPosition = targetRootPart.Position
         local currentTime = tick()
         fullMapCurrentCircleAngle = fullMapCurrentCircleAngle + (fullMapCircleSpeed * fullMapCircleSpeedMultiplier)
+        
         if fullMapCurrentCircleAngle >= 360 then
             fullMapCurrentCircleAngle = fullMapCurrentCircleAngle - 360
         end
+        
         local angleRad = math.rad(fullMapCurrentCircleAngle)
         local offsetX = math.cos(angleRad) * fullMapCircleRadius
         local offsetZ = math.sin(angleRad) * fullMapCircleRadius
         local teleportPosition = targetPosition + Vector3.new(offsetX, 0, offsetZ)
         teleportPosition = teleportPosition + Vector3.new(0, 5, 0)
+        
         local rayParams = RaycastParams.new()
         rayParams.FilterType = Enum.RaycastFilterType.Blacklist
         rayParams.FilterDescendantsInstances = {LocalPlayer.Character, targetCharacter}
@@ -877,14 +1013,17 @@ function createUI()
             Vector3.new(0, -20, 0),
             rayParams
         )
+        
         if rayResult and rayResult.Position then
             teleportPosition = rayResult.Position + Vector3.new(0, 3, 0)
         end
+        
         HumanoidRootPart.CFrame = CFrame.new(teleportPosition)
         HumanoidRootPart.CFrame = CFrame.new(teleportPosition, targetRootPart.Position)
+        
         return true
     end
-
+    
     local function teleportToTargetFullMap(targetRootPart, targetCharacter)
         if fullMapAttackMode == "circle" then
             return teleportCircleAroundTargetFullMap(targetRootPart, targetCharacter)
@@ -960,6 +1099,7 @@ function createUI()
         
         return success
     end
+    
     local function executeMultiDartAttackFullMap(target)
         if not target or not target.character or not target.rootPart then
             return false
@@ -972,6 +1112,16 @@ function createUI()
         
         local head = target.character:FindFirstChild("Head")
         if not head then
+            return false
+        end
+        
+        -- 检查目标是否死亡
+        if not target.humanoid or target.humanoid.Health <= 0 then
+            print(string.format("目标 %s 已死亡，血量: %.0f/%.0f", 
+                target.player.Name, target.humanoid.Health, target.humanoid.MaxHealth))
+            
+            -- 处理目标死亡
+            handleTargetDeath(target.player)
             return false
         end
         
@@ -1031,31 +1181,25 @@ function createUI()
         local startPos = rightHand.Position
         local appliedSpeed = math.max(_G.dartSpeed, 1500)
         
-        WindUI:Notify({
-            Title = "🎯 开始攻击",
-            Content = string.format("目标: %s\n射速: %d\n切换条件: 血量优先或0.5秒", 
-                target.player.Name, appliedSpeed),
-            Duration = 2,
-            Icon = "crosshair"
-        })
-        
         local attackStartTime = tick()
-        local maxAttackDuration = 0.5
         local shouldContinueAttack = true
-        local attackReason = "时间到达"
+        local attackReason = "护盾检测"
         
         while shouldContinueAttack do
             if not target.humanoid or target.humanoid.Health <= 0 then
                 print(string.format("目标 %s 已死亡，停止攻击。", target.player.Name))
                 attackReason = "目标死亡"
                 shouldContinueAttack = false
+                
+                -- 处理目标死亡
+                handleTargetDeath(target.player)
                 break
             end
             
-            local currentDuration = tick() - attackStartTime
-            if currentDuration >= maxAttackDuration then
-                print(string.format("攻击 %s 已达%.2f秒，切换目标。", target.player.Name, maxAttackDuration))
-                attackReason = "时间到达"
+            -- 护盾检测
+            if hasShieldProtection(target.player) then
+                print(string.format("目标 %s 检测到护盾，切换目标。", target.player.Name))
+                attackReason = "检测到护盾"
                 shouldContinueAttack = false
                 break
             end
@@ -1083,6 +1227,7 @@ function createUI()
         return successCount > 0
     end
     
+    -- 修改后的锁定目标函数
     local function lockTarget(playerName)
         if not playerName or playerName == "" then
             WindUI:Notify({
@@ -1102,25 +1247,9 @@ function createUI()
                 continue
             end
             
-            local playerNameLower = player.Name:lower()
-            
-            if playerNameLower == searchName then
-                foundPlayer = player
-                break
-            end
-            
-            if playerNameLower:find(searchName, 1, true) then
-                foundPlayer = player
-                break
-            end
-            
-            if searchName:len() >= 3 and playerNameLower:find(searchName:sub(1, 3), 1, true) then
-                foundPlayer = player
-                break
-            end
-            
-            local displayName = player.DisplayName:lower()
-            if displayName:find(searchName, 1, true) then
+            if player.Name:lower() == searchName or 
+               player.Name:lower():find(searchName, 1, true) or
+               player.DisplayName:lower():find(searchName, 1, true) then
                 foundPlayer = player
                 break
             end
@@ -1132,18 +1261,39 @@ function createUI()
             targetLockEnabled = true
             
             WindUI:Notify({
-                Title = "目标已锁定",
-                Content = "已锁定目标: " .. foundPlayer.Name,
-                Duration = 3,
+                Title = "🎯 目标已锁定",
+                Content = "已锁定目标: " .. foundPlayer.Name .. 
+                         "\n攻击将只针对此目标\n解锁请点击解锁按钮",
+                Duration = 4,
                 Icon = "target"
             })
             
             print("目标锁定成功:", foundPlayer.Name, "UserId:", foundPlayer.UserId)
+            
+            -- 立即测试锁定是否有效
+            local targets = getFullMapTargets()
+            if #targets > 0 and targets[1].player == foundPlayer then
+                WindUI:Notify({
+                    Title = "✅ 锁定有效",
+                    Content = "锁定目标已在攻击范围内",
+                    Duration = 2,
+                    Icon = "check"
+                })
+            else
+                WindUI:Notify({
+                    Title = "⚠️ 锁定目标不在范围",
+                    Content = "锁定目标不在攻击范围内，请靠近目标",
+                    Duration = 2,
+                    Icon = "alert-triangle"
+                })
+            end
+            
             return true
         else
             WindUI:Notify({
-                Title = "锁定失败",
-                Content = "未找到玩家: " .. playerName .. "\n请检查玩家名称是否正确或是否在线",
+                Title = "❌ 锁定失败",
+                Content = "未找到玩家: " .. playerName .. 
+                         "\n请检查玩家名称是否正确或是否在线",
                 Duration = 3,
                 Icon = "x"
             })
@@ -1155,36 +1305,45 @@ function createUI()
         targetLockEnabled = false
         lockedTargetName = ""
         lockedTargetPlayer = nil
+        targetDeathSystem.isInSky = false
+        targetDeathSystem.skyPosition = nil
         
         WindUI:Notify({
             Title = "目标已解锁",
-            Content = "已解锁所有目标",
+            Content = "已解锁所有目标，恢复攻击所有目标",
             Duration = 2,
             Icon = "unlock"
         })
     end
     
+    -- 修改后的香蕉皮攻击循环
     local function bananaAttackLoop()
         return RunService.Heartbeat:Connect(function()
             if not bananaaura or not attackSystem.banana.enabled then
                 attackSystem.banana.active = false
                 return
             end
+        
+            -- 检查角色是否死亡
+            if isPlayerDead then
+                return
+            end
+        
+            attackSystem.banana.active = true
+        
+            local targets = getOptimizedTargets(_G.BananaRange, false, "banana")
             
-            if not Character or not Humanoid or Humanoid.Health <= 0 then
-                attackSystem.banana.active = false
+            -- 添加锁定目标的特殊处理
+            if targetLockEnabled and lockedTargetPlayer and #targets == 0 then
                 return
             end
             
-            attackSystem.banana.active = true
-            
-            local targets = getOptimizedTargets(_G.BananaRange, false, "banana")
             if #targets == 0 then
                 return
             end
             
             for _, target in ipairs(targets) do
-                if not bananaaura or not attackSystem.banana.enabled then
+                if not bananaaura or not attackSystem.banana.enabled or isPlayerDead then
                     break
                 end
                 
@@ -1200,27 +1359,34 @@ function createUI()
         end)
     end
     
+    -- 修改后的飞镖攻击循环
     local function dartAttackLoop()
         return RunService.Heartbeat:Connect(function()
             if not dartaura or not attackSystem.dart.enabled then
                 attackSystem.dart.active = false
                 return
             end
+        
+            -- 检查角色是否死亡
+            if isPlayerDead then
+                return
+            end
+        
+            attackSystem.dart.active = true
+        
+            local targets = getOptimizedTargets(_G.DartRange, true, "dart")
             
-            if not Character or not Humanoid or Humanoid.Health <= 0 then
-                attackSystem.dart.active = false
+            -- 添加锁定目标的特殊处理
+            if targetLockEnabled and lockedTargetPlayer and #targets == 0 then
                 return
             end
             
-            attackSystem.dart.active = true
-            
-            local targets = getOptimizedTargets(_G.DartRange, true, "dart")
             if #targets == 0 then
                 return
             end
             
             for _, target in ipairs(targets) do
-                if not dartaura or not attackSystem.dart.enabled then
+                if not dartaura or not attackSystem.dart.enabled or isPlayerDead then
                     break
                 end
                 
@@ -1235,72 +1401,50 @@ function createUI()
             end
         end)
     end
-    
+
+    -- 修改后的全图攻击循环
     local function fullMapAttackLoop()
         return RunService.Heartbeat:Connect(function()
             if not fullMapAttackEnabled then
+                attackSystem.fullMap.active = false
                 return
             end
-            
-            if not Character or not Character.Parent or not Humanoid or Humanoid.Health <= 0 then
-                print("角色死亡，暂停攻击")
+        
+            -- 检查角色是否死亡
+            if isPlayerDead then
                 return
             end
-            
-            if not LocalPlayer.Character or LocalPlayer.Character:FindFirstChild("Humanoid") and LocalPlayer.Character.Humanoid.Health <= 0 then
-                print("角色死亡或不存在，暂停攻击")
-                return
-            end
-            
-            Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-            Humanoid = Character:WaitForChild("Humanoid")
-            
+        
+            -- 始终标记为活动状态
+            attackSystem.fullMap.active = true
+        
             local ninjaStarData, ninjaStarGuid = findNinjaStar()
             if not ninjaStarData or not ninjaStarGuid then
                 if fullMapAutoBuyDarts then
-                    WindUI:Notify({
-                        Title = "⚠️ 弹药检测",
-                        Content = "检测到飞镖数量为0，正在尝试自动购买...",
-                        Duration = 2,
-                        Icon = "alert-circle"
-                    })
-                    
                     local purchaseSuccess = pcall(function()
                         InvokeServer("attemptPurchase", "Ninja Star")
                     end)
-                    
-                    if purchaseSuccess then
-                        WindUI:Notify({
-                            Title = "✅ 购买请求已发送",
-                            Content = "请等待自动购买完成",
-                            Duration = 2,
-                            Icon = "shopping-cart"
-                        })
-                    end
                 end
-                
                 task.wait(1)
                 return
             end
-            
+        
             local targets = getFullMapTargets()
+        
+            -- 如果没有目标，直接返回
             if #targets == 0 then
                 return
             end
-            
+        
             for _, target in ipairs(targets) do
-                if not fullMapAttackEnabled then
+                if not fullMapAttackEnabled or isPlayerDead then
                     break
                 end
                 
                 if not target.humanoid or target.humanoid.Health <= 0 then
+                    -- 目标死亡，处理死亡逻辑
+                    handleTargetDeath(target.player)
                     continue
-                end
-                
-                if not Character or not Humanoid or Humanoid.Health <= 0 then
-                    print("攻击过程中角色死亡，停止当前攻击")
-                    break
                 end
                 
                 local teleportSuccess = teleportToTargetFullMap(target.rootPart, target.character)
@@ -1360,7 +1504,7 @@ function createUI()
             
             WindUI:Notify({
                 Title = "全图攻击已启用",
-                Content = string.format("模式: %s\n高射速无冷却\n双重条件: 血量(优先)或0.5秒自动切换", modeText),
+                Content = string.format("模式: %s\n高射速无冷却\n切换条件: 护盾检测自动换人", modeText),
                 Duration = 3,
                 Icon = "crosshair"
             })
@@ -1393,7 +1537,7 @@ function createUI()
             attackSystem.fullMap.active = false
             WindUI:Notify({
                 Title = "全图攻击已禁用",
-                Content = "全图攻击功能已停止\n切换条件: 血量归零或攻击0.5秒",
+                Content = "全图攻击功能已停止\n切换条件: 护盾检测",
                 Duration = 2,
                 Icon = "stop-circle"
             })
@@ -1416,7 +1560,7 @@ function createUI()
         local modeText = fullMapAttackMode == "circle" and "旋转攻击模式" or "背后攻击模式"
         WindUI:Notify({
             Title = "全图攻击执行中",
-            Content = string.format("%s\n目标: %s\n切换条件: 血量优先或0.5秒", modeText, target.player.Name),
+            Content = string.format("%s\n目标: %s\n切换条件: 护盾检测", modeText, target.player.Name),
             Duration = 2,
             Icon = "zap"
         })
@@ -1428,7 +1572,7 @@ function createUI()
                 WindUI:Notify({
                     Title = "攻击完成",
                     Content = "成功攻击: " .. target.player.Name .. "\n切换原因: " .. 
-                              (target.humanoid.Health <= 0 and "目标死亡" or "时间到达"),
+                              (hasShieldProtection(target.player) and "检测到护盾" or "目标死亡"),
                     Duration = 2,
                     Icon = "check"
                 })
@@ -1436,11 +1580,111 @@ function createUI()
         end
     end
     
+    -- 修改后的死亡检测和重生恢复系统
+    local deathDetectionConnection = nil
+    local function monitorDeath()
+        local function onCharacterAdded(character)
+            local humanoid = character:WaitForChild("Humanoid")
+            
+            humanoid.Died:Connect(function()
+                print("角色死亡，攻击系统保持运行状态")
+                isPlayerDead = true
+                WindUI:Notify({
+                    Title = "⚰️ 角色死亡",
+                    Content = "角色已死亡，攻击系统继续运行\n重生后将自动恢复攻击功能",
+                    Duration = 3,
+                    Icon = "pause"
+                })
+            end)
+            
+            humanoid.HealthChanged:Connect(function(health)
+                if health > 0 and isPlayerDead then
+                    isPlayerDead = false
+                    print("角色复活，血量恢复: " .. health)
+                end
+            end)
+        end
+        
+        if LocalPlayer.Character then
+            onCharacterAdded(LocalPlayer.Character)
+        end
+        LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+    end
+    
+    local function setupDeathDetection()
+        if deathDetectionConnection then
+            deathDetectionConnection:Disconnect()
+        end
+        
+        deathDetectionConnection = LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+            print("检测到角色重生，重置死亡状态...")
+            
+            WindUI:Notify({
+                Title = "重生完成",
+                Content = "角色已重生，攻击系统正在恢复",
+                Duration = 2,
+                Icon = "loader"
+            })
+            
+            task.wait(1.5)
+            
+            local newHumanoid = newCharacter:WaitForChild("Humanoid")
+            local newHumanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
+            
+            -- 重置死亡状态
+            isPlayerDead = false
+            
+            -- 更新全局变量
+            Character = newCharacter
+            HumanoidRootPart = newHumanoidRootPart
+            Humanoid = newHumanoid
+            
+            WindUI:Notify({
+                Title = "✅ 攻击系统恢复中",
+                Content = "正在自动恢复之前启用的攻击功能",
+                Duration = 2,
+                Icon = "zap"
+            })
+            
+            task.wait(0.5)
+            
+            -- 自动恢复攻击
+            if fullMapAttackEnabled then
+                if fullMapAttackConnection then
+                    fullMapAttackConnection:Disconnect()
+                end
+                fullMapAttackConnection = fullMapAttackLoop()
+                attackSystem.fullMap.active = true
+            end
+            
+            if bananaaura and attackSystem.banana.enabled then
+                if attackSystem.banana.attackLoop then
+                    attackSystem.banana.attackLoop:Disconnect()
+                end
+                attackSystem.banana.attackLoop = bananaAttackLoop()
+                attackSystem.banana.active = true
+            end
+            
+            if dartaura and attackSystem.dart.enabled then
+                if attackSystem.dart.attackLoop then
+                    attackSystem.dart.attackLoop:Disconnect()
+                end
+                attackSystem.dart.attackLoop = dartAttackLoop()
+                attackSystem.dart.active = true
+            end
+            
+            print("攻击系统恢复完成")
+        end)
+    end
+    
+    setupDeathDetection()
+    monitorDeath()
+    
     local Window = WindUI:CreateWindow({
-        Title = '自制脚本 优化增强版 v4.2',
+        Title = '自制脚本 优化增强版 v4.5',
         Icon = "crown",
         IconThemed = true,
-        Author = "v4.2 by 自制版 | 远程攻击已修复 | 0.5秒自动切换",
+        Author = "v4.5 by 自制版 | 远程攻击已修复 | 护盾检测自动切换 | 锁定系统已修复 | 死亡重生攻击保持 | 目标死亡传送系统",
         Folder = "CloudHub",
         Size = UDim2.fromOffset(100, 150),
         
@@ -1513,7 +1757,7 @@ function createUI()
     })
     
     Window:EditOpenButton({
-        Title = "自制脚本 v4.2",
+        Title = "自制脚本 v4.5",
         Icon = "crown",
         CornerRadius = UDim.new(0, 16),
         StrokeThickness = 4,
@@ -1527,12 +1771,27 @@ function createUI()
     })
     
     Window:Tag({
-        Title = "0.5秒自动切换",
+        Title = "护盾检测切换",
         Color = Color3.fromHex("#00FF00")
     })
     
     Window:Tag({
-        Title = "v4.2",
+        Title = "锁定系统已修复",
+        Color = Color3.fromHex("#FFA500")
+    })
+    
+    Window:Tag({
+        Title = "死亡重生攻击保持",
+        Color = Color3.fromHex("#FFA500")
+    })
+    
+    Window:Tag({
+        Title = "目标死亡传送系统",
+        Color = Color3.fromHex("#FFA500")
+    })
+    
+    Window:Tag({
+        Title = "v4.5",
         Color = Color3.fromHex("#FFA500")
     })
 
@@ -1582,16 +1841,106 @@ function createUI()
 
     AttackTab:Toggle({
         Title = "启用目标锁定",
-        Desc = "启用后只攻击锁定的目标",
+        Desc = "启用后只攻击锁定的目标，禁用后恢复攻击所有目标",
         Value = targetLockEnabled,
         Callback = function(state)
             targetLockEnabled = state
+        
+            if state and not lockedTargetPlayer then
+                WindUI:Notify({
+                    Title = "⚠️ 未选择目标",
+                    Content = "请先输入要锁定的玩家名称",
+                    Duration = 2,
+                    Icon = "alert-circle"
+                })
+                targetLockEnabled = false
+            else
+                local message = state and "已启用目标锁定" or "已禁用目标锁定"
+                if state and lockedTargetPlayer then
+                    message = message .. "\n当前锁定目标: " .. lockedTargetName
+                end
+        
+                WindUI:Notify({
+                    Title = "目标锁定",
+                    Content = message,
+                    Duration = 2,
+                    Icon = state and "lock" or "unlock"
+                })
+            end
+        end
+    })
+
+    AttackTab:Section({Title = "目标死亡处理", Icon = "cloud"})
+
+    AttackTab:Toggle({
+        Title = "目标死亡传送到天上",
+        Desc = "锁定目标死亡时传送到天上（Y轴+1000距离）",
+        Value = targetDeathSystem.teleportToSky,
+        Callback = function(state)
+            targetDeathSystem.teleportToSky = state
             WindUI:Notify({
-                Title = "目标锁定",
-                Content = "目标锁定: " .. (state and "已启用" or "已禁用"),
+                Title = "目标死亡处理",
+                Content = "目标死亡传送到天上: " .. (state and "已启用" or "已禁用"),
                 Duration = 2,
-                Icon = state and "lock" or "unlock"
+                Icon = state and "cloud" or "x"
             })
+        end
+    })
+
+    AttackTab:Slider({
+        Title = "天上高度",
+        Desc = "目标死亡时传送到的天上高度",
+        Value = {
+            Min = 100,
+            Max = 5000,
+            Default = targetDeathSystem.skyHeight
+        },
+        Callback = function(value)
+            targetDeathSystem.skyHeight = value
+            WindUI:Notify({
+                Title = "天上高度已设置",
+                Content = "天上高度: " .. value,
+                Duration = 2,
+                Icon = "arrow-up"
+            })
+        end
+    })
+
+    AttackTab:Toggle({
+        Title = "等待目标复活",
+        Desc = "目标死亡后等待目标血量恢复满再继续攻击",
+        Value = targetDeathSystem.waitForRespawn,
+        Callback = function(state)
+            targetDeathSystem.waitForRespawn = state
+            WindUI:Notify({
+                Title = "等待目标复活",
+                Content = "等待目标复活: " .. (state and "已启用" or "已禁用"),
+                Duration = 2,
+                Icon = state and "clock" or "x"
+            })
+        end
+    })
+
+    AttackTab:Button({
+        Title = "立即传送到天上",
+        Desc = "立即将角色传送到Y轴+1000高度的天上",
+        Icon = "arrow-up",
+        Callback = function()
+            if HumanoidRootPart then
+                local currentPosition = HumanoidRootPart.Position
+                local skyPosition = Vector3.new(
+                    currentPosition.X,
+                    currentPosition.Y + 1000,
+                    currentPosition.Z
+                )
+                HumanoidRootPart.CFrame = CFrame.new(skyPosition)
+                WindUI:Notify({
+                    Title = "✅ 已传送到天上",
+                    Content = "位置: (X: " .. currentPosition.X .. ", Y: " .. skyPosition.Y .. ", Z: " .. currentPosition.Z .. ")",
+                    Duration = 2,
+                    Icon = "check"
+                })
+            end
         end
     })
 
@@ -1714,14 +2063,14 @@ function createUI()
 
     AttackTab:Toggle({
         Title = "全图攻击（如果没有攻击请丢掉背包的飞镖）",
-        Desc = "启用高射速无冷却全图攻击，血量归零或攻击0.5秒自动切换",
+        Desc = "启用高射速无冷却全图攻击，护盾检测自动换人，死亡重生后自动恢复攻击，锁定目标死亡时传送到天上",
         Value = false,
         Callback = toggleFullMapAttack
     })
 
     AttackTab:Button({
-        Title = "立即攻击（测试切换逻辑）",
-        Desc = "立即执行一次全图攻击，测试0.5秒自动切换功能",
+        Title = "立即攻击（测试护盾检测）",
+        Desc = "立即执行一次全图攻击，测试护盾检测切换功能",
         Icon = "zap",
         Callback = executeSingleFullMapAttack
     })
@@ -1745,24 +2094,6 @@ function createUI()
         end
     })
 
-    AttackTab:Slider({
-        Title = "切换时间(秒)",
-        Desc = "设置攻击同一目标的最大持续时间（0.1-2.0秒）",
-        Value = {
-            Min = 0.1,
-            Max = 2.0,
-            Default = 0.5
-        },
-        Callback = function(value)
-            WindUI:Notify({
-                Title = "切换时间已更新",
-                Content = "攻击同一目标最大时间: " .. value .. "秒\n(需重启攻击生效)",
-                Duration = 2,
-                Icon = "clock"
-            })
-        end
-    })
-
     AttackTab:Section({Title = "近战攻击", Icon = "fist"})
 
     AttackTab:Toggle({
@@ -1775,66 +2106,268 @@ function createUI()
 
     local MainTab = Window:Tab({Title = "新功能", Icon = "dollar-sign"})
 
-    MainTab:Toggle({
-        Title = "自动ATM",
-        Value = false,
-        Callback = function(Value)
-            autoATMCashCombo = Value
-            if autoATMCashCombo then
-                local function collectCash()
-                    local player = game:GetService("Players").LocalPlayer
-                    local cashSize = Vector3.new(2, 0.2499999850988388, 1)
-                    for _, part in ipairs(workspace.Game.Entities.CashBundle:GetDescendants()) do
-                        if part:IsA("BasePart") and part.Size == cashSize then
-                            player.Character.HumanoidRootPart.CFrame = part.CFrame
-                            task.wait()
+MainTab:Toggle({
+    Title = "自动ATM",
+    Value = false,
+    Callback = function(Value)
+        autoATMCashCombo = Value
+        
+        if autoATMCashCombo then
+            -- 改进的捡钱函数：避免捡墙里的钱
+            local function collectCash()
+                local player = game:GetService("Players").LocalPlayer
+                local character = player.Character
+                
+                if not character or not character:FindFirstChild("HumanoidRootPart") then
+                    return
+                end
+                
+                local playerRootPart = character.HumanoidRootPart
+                local playerPosition = playerRootPart.Position
+                
+                -- 检查现金包的路径
+                local cashBundleFolder = workspace:FindFirstChild("Game")
+                cashBundleFolder = cashBundleFolder and cashBundleFolder:FindFirstChild("Entities")
+                cashBundleFolder = cashBundleFolder and cashBundleFolder:FindFirstChild("CashBundle")
+                
+                if not cashBundleFolder then
+                    return
+                end
+                
+                local cashSize = Vector3.new(2, 0.2499999850988388, 1)
+                local collectedCash = 0
+                
+                for _, part in ipairs(cashBundleFolder:GetDescendants()) do
+                    if not autoATMCashCombo then break end
+                    
+                    if part:IsA("BasePart") and part.Size == cashSize then
+                        local cashPosition = part.Position
+                        
+                        -- 检查现金是否在墙里或不可达位置
+                        local isAccessible = true
+                        
+                        -- 1. 检查是否在墙内（位置异常）
+                        if cashPosition.Y < 0 then
+                            isAccessible = false
+                        end
+                        
+                        -- 2. 检查是否在建筑物内部（通过射线检测）
+                        local raycastParams = RaycastParams.new()
+                        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+                        raycastParams.FilterDescendantsInstances = {character, cashBundleFolder}
+                        
+                        local raycastResult = workspace:Raycast(
+                            playerPosition + Vector3.new(0, 3, 0),
+                            (cashPosition - playerPosition).Unit * 100,
+                            raycastParams
+                        )
+                        
+                        -- 如果射线检测到障碍物，且距离很远，可能是墙里的
+                        if raycastResult and raycastResult.Instance then
+                            local distanceToWall = (raycastResult.Position - playerPosition).Magnitude
+                            local distanceToCash = (cashPosition - playerPosition).Magnitude
+                            
+                            if distanceToWall < distanceToCash - 5 then
+                                isAccessible = false
+                            end
+                        end
+                        
+                        -- 3. 检查现金是否在地图边界内
+                        local mapBounds = {
+                            minX = -500, maxX = 1500,
+                            minY = 0, maxY = 200,
+                            minZ = -1000, maxZ = 500
+                        }
+                        
+                        if cashPosition.X < mapBounds.minX or cashPosition.X > mapBounds.maxX or
+                           cashPosition.Y < mapBounds.minY or cashPosition.Y > mapBounds.maxY or
+                           cashPosition.Z < mapBounds.minZ or cashPosition.Z > mapBounds.maxZ then
+                            isAccessible = false
+                        end
+                        
+                        -- 只捡取可达的现金
+                        if isAccessible then
+                            playerRootPart.CFrame = CFrame.new(cashPosition + Vector3.new(0, 2, 0))
+                            task.wait(0.2)
+                            collectedCash = collectedCash + 1
                         end
                     end
                 end
-                coroutine.wrap(function()
-                    while autoATMCashCombo and task.wait() do
-                        local ATMsFolder = workspace:FindFirstChild("ATMs")
-                        local localPlayer = game:GetService("Players").LocalPlayer
-                        local hasActiveATM = false
-                        if ATMsFolder and localPlayer.Character then
-                            for _, atm in ipairs(ATMsFolder:GetChildren()) do
-                                if atm:IsA("Model") then
-                                    local hp = atm:GetAttribute("health")
-                                    if hp ~= 0 then
-                                        hasActiveATM = true
-                                        for _, part in ipairs(atm:GetChildren()) do
-                                            if part.Name == "Main" and part:IsA("BasePart") then
-                                                localPlayer.Character.HumanoidRootPart.CFrame = part.CFrame
-                                                task.wait()
-                                                atm:SetAttribute("health", 0)
-                                                break
-                                            end
+            end
+            
+            coroutine.wrap(function()
+                while autoATMCashCombo and task.wait() do
+                    local ATMsFolder = workspace:FindFirstChild("ATMs")
+                    local localPlayer = game:GetService("Players").LocalPlayer
+                    local hasActiveATM = false
+                    
+                    if ATMsFolder and localPlayer.Character then
+                        for _, atm in ipairs(ATMsFolder:GetChildren()) do
+                            if atm:IsA("Model") then
+                                local hp = atm:GetAttribute("health")
+                                if hp ~= 0 then
+                                    hasActiveATM = true
+                                    for _, part in ipairs(atm:GetChildren()) do
+                                        if part.Name == "Main" and part:IsA("BasePart") then
+                                            localPlayer.Character.HumanoidRootPart.CFrame = part.CFrame
+                                            task.wait(0.5)
+                                            atm:SetAttribute("health", 0)
+                                            break
                                         end
-                                        task.wait()
                                     end
+                                    task.wait(1)
                                 end
                             end
                         end
-                        if hasActiveATM then
-                            task.wait(1)
-                        else
-                            collectCash()
-                            task.wait()
-                        end
                     end
-                end)()
-            end
-        end
-    })
-
-    local function autoSellItems()
-        for i, v in next, v3item.inventory.items do
-            local sellid = v.guid
-            Signal.FireServer("equip", sellid)
-            Signal.FireServer("sellItem", sellid)
-            task.wait(0.1)
+                    
+                    if hasActiveATM then
+                        task.wait(1)
+                    else
+                        collectCash()
+                        task.wait(1)
+                    end
+                end
+            end)()
         end
     end
+})
+
+-- 银行偷钱脚本 v2.8（无UI提示版）
+local bankStealEnabled = false
+local isBankStealing = false
+local bankStealThread = nil
+
+-- 银行偷钱模块
+local function setupBankSteal()
+    local BANK_CASH_PATH = Workspace:FindFirstChild("BankRobbery") and 
+                           Workspace.BankRobbery:FindFirstChild("BankCash")
+    local STEAL_INTERVAL = 0.1
+    local MAX_STEAL_ATTEMPTS = 10
+    
+    -- 快速互动函数
+    local function quickInteract(target)
+        if not target or not target.Parent or not HumanoidRootPart then
+            return false
+        end
+        
+        local mainPart = target:IsA("BasePart") and target or target.PrimaryPart
+        if not mainPart then
+            for _, part in ipairs(target:GetChildren()) do
+                if part:IsA("BasePart") then
+                    mainPart = part
+                    break
+                end
+            end
+        end
+        
+        if not mainPart then
+            return false
+        end
+        
+        pcall(function()
+            HumanoidRootPart.CFrame = CFrame.new(mainPart.Position + Vector3.new(0, 2, 0))
+        end)
+        
+        local interacted = false
+        for _, descendant in ipairs(target:GetDescendants()) do
+            if descendant:IsA("ProximityPrompt") then
+                fireproximityprompt(descendant)
+                interacted = true
+            elseif descendant:IsA("ClickDetector") then
+                firesignal(descendant.MouseClick)
+                interacted = true
+            end
+        end
+        
+        return interacted
+    end
+    
+    -- 银行偷钱循环
+    local function stealFromBank()
+        if isBankStealing or not bankStealEnabled then return end
+        
+        local bankCash = BANK_CASH_PATH
+        if not bankCash or not bankCash.Parent then
+            return
+        end
+        
+        isBankStealing = true
+        local attempts = 0
+        
+        while attempts < MAX_STEAL_ATTEMPTS and bankCash and bankCash.Parent and bankStealEnabled do
+            local success = quickInteract(bankCash)
+            
+            if success then
+                attempts = 0
+            else
+                attempts = attempts + 1
+            end
+            
+            RunService.Heartbeat:Wait(STEAL_INTERVAL)
+        end
+        
+        isBankStealing = false
+    end
+    
+    -- 银行偷钱主循环
+    local function startBankSteal()
+        if bankStealThread then
+            task.cancel(bankStealThread)
+        end
+        
+        bankStealThread = task.spawn(function()
+            while bankStealEnabled do
+                if not isBankStealing then
+                    stealFromBank()
+                end
+                task.wait(0.5)
+            end
+        end)
+    end
+    
+    local function stopBankSteal()
+        if bankStealThread then
+            task.cancel(bankStealThread)
+            bankStealThread = nil
+        end
+        isBankStealing = false
+    end
+    
+    return {
+        start = function()
+            bankStealEnabled = true
+            if BANK_CASH_PATH then
+                startBankSteal()
+            end
+        end,
+        
+        stop = function()
+            bankStealEnabled = false
+            stopBankSteal()
+        end,
+        
+        isRunning = function()
+            return bankStealEnabled
+        end
+    }
+end
+
+-- 初始化银行偷钱模块
+local bankSteal = setupBankSteal()
+
+-- 独立的银行偷钱开关（放在新功能Tab中）
+MainTab:Toggle({
+    Title = "银行偷钱",
+    Value = false,
+    Callback = function(state)
+        if state then
+            bankSteal.start()
+        else
+            bankSteal.stop()
+        end
+    end
+})
 
     MainTab:Section({Title = "售卖功能", Icon = "shopping-cart"})
 
@@ -2179,7 +2712,7 @@ function createUI()
             local isEnabled = fullMapAttackMode == "circle" and "开启" or "关闭"
             WindUI:Notify({
                 Title = "当前攻击模式",
-                Content = string.format("模式: %s\n开关状态: %s\n背后距离: %.1f\n旋转半径: %.1f\n自动购买: %s\n切换条件: 血量优先或0.5秒", 
+                Content = string.format("模式: %s\n开关状态: %s\n背后距离: %.1f\n旋转半径: %.1f\n自动购买: %s\n切换条件: 护盾检测", 
                     modeText, isEnabled, fullMapBehindDistance, fullMapCircleRadius, 
                     fullMapAutoBuyDarts and "开启" or "关闭"),
                 Duration = 3,
@@ -2227,6 +2760,51 @@ function createUI()
     SettingsTab:Section({Title = "调试功能", Icon = "settings"})
 
     SettingsTab:Button({
+        Title = "测试锁定系统",
+        Desc = "测试目标锁定功能是否正常工作",
+        Icon = "test-tube",
+        Callback = function()
+            if targetLockEnabled and lockedTargetPlayer then
+                WindUI:Notify({
+                    Title = "锁定系统状态",
+                    Content = string.format("锁定启用: %s\n锁定目标: %s\n目标在线: %s", 
+                        targetLockEnabled and "是" or "否",
+                        lockedTargetName,
+                        Players:FindFirstChild(lockedTargetName) and "是" or "否"),
+                    Duration = 3,
+                    Icon = "info"
+                })
+                
+                -- 测试目标选择
+                local bananaTargets = getOptimizedTargets(_G.BananaRange, false, "banana")
+                local dartTargets = getOptimizedTargets(_G.DartRange, true, "dart")
+                local fullMapTargets = getFullMapTargets()
+                
+                print("锁定系统测试结果:")
+                print("  - 香蕉皮目标数量: " .. #bananaTargets)
+                print("  - 飞镖目标数量: " .. #dartTargets)
+                print("  - 全图目标数量: " .. #fullMapTargets)
+                
+                if #fullMapTargets > 0 and fullMapTargets[1].player == lockedTargetPlayer then
+                    WindUI:Notify({
+                        Title = "✅ 锁定系统正常",
+                        Content = "锁定功能正常工作\n当前锁定目标: " .. lockedTargetName,
+                        Duration = 2,
+                        Icon = "check"
+                    })
+                end
+            else
+                WindUI:Notify({
+                    Title = "❌ 锁定未启用",
+                    Content = "请先启用锁定功能并选择目标",
+                    Duration = 2,
+                    Icon = "x"
+                })
+            end
+        end
+    })
+
+    SettingsTab:Button({
         Title = "测试全图攻击",
         Desc = "测试全图攻击功能是否正常（带飞镖检测）",
         Icon = "test-tube",
@@ -2238,7 +2816,7 @@ function createUI()
             
             WindUI:Notify({
                 Title = "全图攻击测试",
-                Content = string.format("目标数量: %d\n射速: %d\n飞镖状态: %s\n攻击模式: %s\n切换逻辑: 血量优先/0.5秒", 
+                Content = string.format("目标数量: %d\n射速: %d\n飞镖状态: %s\n攻击模式: %s\n切换逻辑: 护盾检测", 
                     targetCount, _G.dartSpeed, dartStatus, 
                     fullMapAttackMode == "circle" and "旋转攻击" or "背后攻击"),
                 Duration = 3,
@@ -2258,11 +2836,83 @@ function createUI()
                     Title = "攻击测试完成",
                     Content = string.format("结果: %s\n时间: %.3f秒\n切换原因: %s", 
                         success and "成功" or "失败", endTime - startTime,
-                        target.humanoid.Health <= 0 and "目标死亡" or "时间到达"),
+                        hasShieldProtection(target.player) and "检测到护盾" or (target.humanoid.Health <= 0 and "目标死亡" or "其他原因")),
                     Duration = 3,
                     Icon = success and "check" or "x"
                 })
             end
+        end
+    })
+
+    SettingsTab:Button({
+        Title = "测试目标死亡传送",
+        Desc = "测试锁定目标死亡时是否传送到天上",
+        Icon = "test-tube",
+        Callback = function()
+            if targetLockEnabled and lockedTargetPlayer then
+                local targetCharacter = lockedTargetPlayer.Character
+                if targetCharacter then
+                    local humanoid = targetCharacter:FindFirstChildOfClass("Humanoid")
+                    if humanoid then
+                        local isAlive = humanoid.Health > 0
+                        
+                        WindUI:Notify({
+                            Title = "目标状态测试",
+                            Content = string.format("锁定目标: %s\n血量: %.0f/%.0f\n存活: %s\n传送系统: %s\n天上高度: %d", 
+                                lockedTargetName,
+                                humanoid.Health,
+                                humanoid.MaxHealth,
+                                isAlive and "是" or "否",
+                                targetDeathSystem.teleportToSky and "已启用" or "已禁用",
+                                targetDeathSystem.skyHeight),
+                            Duration = 3,
+                            Icon = "info"
+                        })
+                        
+                        if not isAlive then
+                            WindUI:Notify({
+                                Title = "测试目标死亡传送",
+                                Content = "目标已死亡，正在测试传送功能...",
+                                Duration = 2,
+                                Icon = "cloud"
+                            })
+                            
+                            local result = handleTargetDeath(lockedTargetPlayer)
+                            WindUI:Notify({
+                                Title = "传送测试结果",
+                                Content = "目标死亡传送: " .. (result and "已触发" or "未触发"),
+                                Duration = 2,
+                                Icon = result and "check" or "x"
+                            })
+                        end
+                    end
+                end
+            else
+                WindUI:Notify({
+                    Title = "❌ 测试失败",
+                    Content = "请先锁定目标以测试死亡传送功能",
+                    Duration = 2,
+                    Icon = "x"
+                })
+            end
+        end
+    })
+
+    SettingsTab:Button({
+        Title = "测试死亡重生系统",
+        Desc = "测试死亡后攻击系统是否保持，重生后是否自动恢复",
+        Icon = "test-tube",
+        Callback = function()
+            WindUI:Notify({
+                Title = "死亡重生系统测试",
+                Content = string.format("当前死亡状态: %s\n全图攻击: %s\n香蕉皮攻击: %s\n飞镖攻击: %s", 
+                    isPlayerDead and "已死亡" or "存活",
+                    attackSystem.fullMap.active and "运行中" or "停止",
+                    attackSystem.banana.active and "运行中" or "停止",
+                    attackSystem.dart.active and "运行中" or "停止"),
+                Duration = 3,
+                Icon = "info"
+            })
         end
     })
 
@@ -2294,7 +2944,7 @@ function createUI()
             
             WindUI:Notify({
                 Title = "设置已重置",
-                Content = "所有攻击设置已重置为默认值\n香蕉皮射速: 1500\n飞镖射速: 2000\n飞镖检测: 启用\n切换逻辑: 血量优先/0.5秒",
+                Content = "所有攻击设置已重置为默认值\n香蕉皮射速: 1500\n飞镖射速: 2000\n飞镖检测: 启用\n切换逻辑: 护盾检测",
                 Duration = 3,
                 Icon = "check"
             })
@@ -2488,104 +3138,50 @@ function createUI()
             end)
         end
     })
-
-    local deathDetectionConnection = nil
-    local function setupDeathDetection()
-        if deathDetectionConnection then
-            deathDetectionConnection:Disconnect()
-        end
-        
-        deathDetectionConnection = LocalPlayer.CharacterAdded:Connect(function(newCharacter)
-            print("角色重新生成，重置攻击系统...")
-            
-            task.wait(0.5)
-            
-            Character = newCharacter
-            HumanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
-            Humanoid = newCharacter:WaitForChild("Humanoid")
-            
-            if fullMapAttackEnabled and fullMapAttackConnection then
-                print("重新启用全图攻击...")
-                WindUI:Notify({
-                    Title = "系统恢复",
-                    Content = "角色重生，重新启用攻击系统",
-                    Duration = 3,
-                    Icon = "refresh-cw"
-                })
-                
-                fullMapAttackConnection:Disconnect()
-                fullMapAttackConnection = fullMapAttackLoop()
-            end
-            
-            if bananaaura then
-                WindUI:Notify({
-                    Title = "香蕉皮攻击恢复",
-                    Content = "已重新启用香蕉皮攻击",
-                    Duration = 2,
-                    Icon = "check"
-                })
-            end
-            
-            if dartaura then
-                WindUI:Notify({
-                    Title = "飞镖攻击恢复",
-                    Content = "已重新启用飞镖攻击",
-                    Duration = 2,
-                    Icon = "check"
-                })
-            end
-        end)
-    end
     
-    setupDeathDetection()
-    
-    local function monitorDeath()
-        local function onCharacterAdded(character)
-            local humanoid = character:WaitForChild("Humanoid")
-            humanoid.Died:Connect(function()
-                print("角色死亡，暂停所有攻击功能...")
-                
-                if fullMapAttackEnabled and fullMapAttackConnection then
-                    print("暂停全图攻击...")
-                    WindUI:Notify({
-                        Title = "攻击暂停",
-                        Content = "角色死亡，攻击功能已暂停",
-                        Duration = 3,
-                        Icon = "pause"
-                    })
+    -- 在脚本加载完成后添加系统状态监控
+    task.spawn(function()
+        while task.wait(3) do
+            if Character and Humanoid then
+                local isAlive = Humanoid.Health > 0
+                print("系统状态监控:")
+                print(string.format("  - 角色状态: %s (血量: %.1f/%.1f)", 
+                    isAlive and "存活" or "死亡", Humanoid.Health, Humanoid.MaxHealth))
+                print("  - 死亡状态: " .. (isPlayerDead and "已死亡" or "存活"))
+                print("  - 香蕉皮攻击: "..(attackSystem.banana.active and "运行中" or "停止"))
+                print("  - 飞镖攻击: "..(attackSystem.dart.active and "运行中" or "停止"))
+                print("  - 全图攻击: "..(attackSystem.fullMap.active and "运行中" or "停止"))
+                print("  - 全图攻击启用状态: "..(fullMapAttackEnabled and "是" or "否"))
+                print("  - 目标锁定: "..(targetLockEnabled and "已启用" or "已禁用"))
+                if targetLockEnabled and lockedTargetPlayer then
+                    print("  - 锁定目标: "..lockedTargetName)
                 end
+                print("  - 目标死亡传送: "..(targetDeathSystem.teleportToSky and "启用" or "禁用"))
+                print("  - 天上状态: "..(targetDeathSystem.isInSky and "在天上" or "在地面"))
                 
-                bananaaura = false
-                dartaura = false
-                
-                if bananaToggle then
-                    bananaToggle:SetValue(false)
+                -- 如果应该攻击但攻击未运行，尝试恢复
+                if isAlive and fullMapAttackEnabled and not attackSystem.fullMap.active and not fullMapAttackConnection then
+                    print("检测到攻击未运行但应该运行，尝试恢复...")
+                    fullMapAttackConnection = fullMapAttackLoop()
                 end
-                
-                if dartToggle then
-                    dartToggle:SetValue(false)
-                end
-            end)
+            else
+                print("角色未初始化，等待重生...")
+            end
         end
-        
-        if LocalPlayer.Character then
-            onCharacterAdded(LocalPlayer.Character)
-        end
-        LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-    end
-    
-    monitorDeath()
+    end)
     
     task.wait(1)
     WindUI:Notify({
         Title = "脚本加载完成",
         Content = "✓ 高射速无冷却系统已启用\n" ..
                  "✓ 全图攻击功能就绪\n" ..
-                 "✓ 远程攻击系统已修复\n" +
-                 "✓ 智能飞镖检测已集成\n" +
-                 "✓ 自动购买系统正常\n" +
-                 "✓ 目标锁定功能正常\n" +
-                 "✓ 双重条件切换: 血量优先/0.5秒\n" +
+                 "✓ 远程攻击系统已修复\n" ..
+                 "✓ 智能飞镖检测已集成\n" ..
+                 "✓ 自动购买系统正常\n" ..
+                 "✓ 目标锁定系统已修复\n" ..
+                 "✓ 护盾检测自动切换\n" ..
+                 "✓ 死亡重生攻击保持\n" ..
+                 "✓ 目标死亡传送系统已启用\n" ..
                  "✓ 所有功能已修复完成",
         Duration = 5,
         Icon = "check"
@@ -2599,18 +3195,11 @@ function createUI()
     print("全图攻击: 就绪")
     print("攻击方式: "..(fullMapAttackMode == "circle" and "旋转攻击" or "背后攻击"))
     print("自动购买飞镖: "..(fullMapAutoBuyDarts and "启用" or "禁用"))
-    print("切换条件: 血量优先或攻击0.5秒自动切换")
+    print("切换条件: 护盾检测自动切换")
+    print("锁定系统: 已修复")
+    print("死亡重生攻击保持: 已启用")
+    print("目标死亡传送系统: 已集成")
     print("================================================")
-    
-    task.spawn(function()
-        while task.wait(5) do
-            print("系统状态:")
-            print("  - 香蕉皮攻击: "..(attackSystem.banana.active and "运行中" or "停止"))
-            print("  - 飞镖攻击: "..(attackSystem.dart.active and "运行中" or "停止"))
-            print("  - 全图攻击: "..(attackSystem.fullMap.active and "运行中" or "停止"))
-            print("  - 角色状态: "..(Humanoid and Humanoid.Health > 0 and "存活" or "死亡"))
-        end
-    end)
 end
 
 repeat
