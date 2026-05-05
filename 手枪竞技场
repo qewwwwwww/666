@@ -1,0 +1,982 @@
+local EditableService = game:GetService("EditableService")
+if not game:IsLoaded() then game.Loaded:Wait() end
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/gycgchgyfytdttr/shenqin/refs/heads/main/ui.lua"))()
+
+local p = game:GetService('Players').LocalPlayer
+local c = p.Character or p.CharacterAdded:Wait()
+Instance.new("Model", c).Name = "SecurityModel"
+if not c:FindFirstChild("SecurityModel") then
+    return WindUI:Notify({ Title = "系统", Content = "检测[1]", Duration = 5 })
+end
+local OFFSET = 0x1BFA3
+local G_ID = game.GameId
+local P_ID = game.PlaceId
+local function generateKey()
+return (bit32.bxor(G_ID, P_ID) + OFFSET) * 2
+end
+local function secureCheck(...)
+local key = ...
+if select("#", ...) ~= 1 then
+    while true do end
+end
+if key ~= generateKey() then
+    local function crash() return crash() end
+    task.spawn(crash)
+    while true do end
+end
+end
+local win = function(...)
+setfpscap(9999)
+local P, R, S = game:GetService("Players"), game:GetService("RunService"), game:GetService("Stats")
+
+local screenGui = Instance.new("ScreenGui", P.LocalPlayer:WaitForChild("PlayerGui"))
+
+local f = Instance.new("Frame")
+f.Size = UDim2.new(0, 0, 0, 25)  -- 宽度设为0，自动调整
+f.Position = UDim2.new(0, 5, 0, 5)
+f.BackgroundTransparency = 0.4
+f.BackgroundColor3 = Color3.new(0, 0, 0)
+f.Active, f.Draggable = true, true
+f.AutomaticSize = Enum.AutomaticSize.X  -- 自动调整宽度
+f.Parent = screenGui
+
+-- 使用UIListLayout自动排列标签
+local layout = Instance.new("UIListLayout", f)
+layout.FillDirection = Enum.FillDirection.Horizontal
+layout.Padding = UDim.new(0, 5)  -- 标签之间的间距
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+layout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+-- 添加内边距
+local padding = Instance.new("UIPadding", f)
+padding.PaddingLeft = UDim.new(0, 5)
+padding.PaddingRight = UDim.new(0, 5)
+padding.PaddingTop = UDim.new(0, 3)
+padding.PaddingBottom = UDim.new(0, 3)
+
+-- 创建标签
+local labels = {}
+
+-- 创建标签函数
+local function createLabel(text, color, autoSize)
+    local label = Instance.new("TextLabel", f)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.Code
+    label.TextSize = 12
+    label.TextColor3 = color
+    label.Text = text
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    if autoSize then
+        label.AutomaticSize = Enum.AutomaticSize.X
+        label.Size = UDim2.new(0, 0, 1, 0)
+    else
+        -- 使用TextService计算文本宽度
+        local textService = game:GetService("TextService")
+        local textSize = textService:GetTextSize(text, 12, Enum.Font.Code, Vector2.new(1000, 1000))
+        label.Size = UDim2.new(0, textSize.X, 1, 0)
+    end
+    
+    return label
+end
+
+-- 创建所有标签
+labels[1] = createLabel("FPS:", Color3.new(1, 1, 1), false)  -- 静态标签
+labels[2] = createLabel("0", Color3.fromRGB(0, 200, 255), true)  -- 动态标签
+labels[3] = createLabel("Ping:", Color3.new(1, 1, 1), false)  -- 静态标签
+labels[4] = createLabel("0", Color3.fromRGB(0, 200, 255), true)  -- 动态标签
+
+-- 更新帧率和延迟
+local t, c = 0, 0
+R.Heartbeat:Connect(function()
+    c += 1
+    if tick() - t >= 1 then
+        labels[2].Text = tostring(c)
+        
+
+        local ping = S.Network.ServerStatsItem["Data Ping"]:GetValue()
+        labels[4].Text = tostring(math.floor(ping))
+        
+        c, t = 0, tick()
+    end
+end)
+WindUI:AddTheme({
+    Name = "Frosted Glacier",
+    Accent = Color3.fromHex("#4cc9f0"),         -- 冰蓝点缀色
+    Background = Color3.fromHex("#0a2540"),     -- 深蓝背景
+    BackgroundTransparency = 0.1,
+    Outline = Color3.fromHex("#2a4c6e"),        -- 中等蓝边框
+    Text = Color3.fromHex("#ffffff"),          -- 白色文字
+    Placeholder = Color3.fromHex("#94b3d1"),    -- 浅灰蓝占位符
+    Button = Color3.fromHex("#2c7da0"),         -- 深蓝按钮
+    Icon = Color3.fromHex("#e6f2ff"),          -- 浅蓝图标
+    Hover = Color3.fromHex("#3a5f8a"),         -- 悬停效果
+    WindowBackground = Color3.fromHex("#0d2b4a"),
+    WindowShadow = Color3.fromHex("#051a2e"),
+    DialogBackground = Color3.fromHex("#1a365d"),
+    DialogBackgroundTransparency = 0.1,
+    DialogTitle = Color3.fromHex("#ffffff"),
+    DialogContent = Color3.fromHex("#d9e8ff"),
+    DialogIcon = Color3.fromHex("#4cc9f0"),
+    WindowTopbarButtonIcon = Color3.fromHex("#ffffff"),
+    WindowTopbarTitle = Color3.fromHex("#ffffff"),
+    WindowTopbarAuthor = Color3.fromHex("#b3d9ff"),
+    WindowTopbarIcon = Color3.fromHex("#4cc9f0"),
+    TabBackground = Color3.fromHex("#1a365d"),
+    TabTitle = Color3.fromHex("#ffffff"),
+    TabIcon = Color3.fromHex("#94c6ff"),
+    ElementBackground = Color3.fromHex("#1a365d"),
+    ElementTitle = Color3.fromHex("#ffffff"),
+    ElementDesc = Color3.fromHex("#b3d9ff"),
+    ElementIcon = Color3.fromHex("#4cc9f0"),
+    PopupBackground = Color3.fromHex("#1a365d"),
+    PopupBackgroundTransparency = 0.1,
+    PopupTitle = Color3.fromHex("#ffffff"),
+    PopupContent = Color3.fromHex("#d9e8ff"),
+    PopupIcon = Color3.fromHex("#4cc9f0"),
+    Toggle = Color3.fromHex("#2c7da0"),
+    ToggleBar = Color3.fromHex("#4cc9f0"),
+    Checkbox = Color3.fromHex("#2c7da0"),
+    CheckboxIcon = Color3.fromHex("#ffffff"),
+    Slider = Color3.fromHex("#2c7da0"),
+    SliderThumb = Color3.fromHex("#4cc9f0"),
+    Dropdown = Color3.fromHex("#1a365d"),
+    DropdownHover = Color3.fromHex("#2a4c6e"),
+    InputField = Color3.fromHex("#1a365d"),
+    InputFieldBorder = Color3.fromHex("#2a4c6e"),
+    Success = Color3.fromHex("#4ade80"),       -- 亮绿色
+    Warning = Color3.fromHex("#fbbf24"),       -- 琥珀色
+    Error = Color3.fromHex("#f87171"),         -- 亮红色
+    Info = Color3.fromHex("#60a5fa"),          -- 亮蓝色
+})
+    local RunService = game:GetService("RunService")
+    local Players = game:GetService("Players")
+    local UserInputService = game:GetService("UserInputService")  -- 确保这里正确获取
+    local LocalPlayer = Players.LocalPlayer
+    local character = LocalPlayer.Character
+    local tpEnabled = true
+    
+    -- 飞行功能变量
+    local flying = false
+    local flySpeed = 50
+    local flyBV, flyBG
+    local flyConnection
+    
+    -- TPWalk变量
+    local TPWalk = false
+    local TPWalkingConnection = nil
+    local currentSpeed = 1.0
+    
+    -- ESP变量
+    local espCache = {}
+    local espLoop
+    
+    local function setupCharacter()
+        local character = LocalPlayer.Character
+        if character then
+            local humanoid = character:WaitForChild("Humanoid")
+            humanoid.Died:Connect(function()
+                task.wait()
+                setupCharacter()
+                if TPWalk then startTPWalk() end
+                if flying then startFly() end
+            end)
+        end
+    end
+    
+    -- 飞行功能
+    local function startFly()
+        if flying or not LocalPlayer.Character then return end
+        
+        local char = LocalPlayer.Character
+        local hum = char:WaitForChild("Humanoid")
+        local root = char:WaitForChild("HumanoidRootPart")
+        
+        flying = true
+        hum.PlatformStand = true
+        
+        -- 创建飞行物理控制器
+        flyBV = Instance.new("BodyVelocity", root)
+        flyBV.Name = "FlyBodyVelocity"
+        flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        flyBV.Velocity = Vector3.new(0, 0, 0)
+        
+        flyBG = Instance.new("BodyGyro", root)
+        flyBG.Name = "FlyBodyGyro"
+        flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        flyBG.P = 3000
+        
+        -- 飞行控制循环
+        flyConnection = RunService.RenderStepped:Connect(function(delta)
+            if not flying or not root then return end
+            
+            local camera = workspace.CurrentCamera
+            local velocity = Vector3.new(0, 0, 0)
+            
+            -- 检查UserInputService是否存在
+            if UserInputService then
+                -- 基础方向控制
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                    velocity = velocity + (camera.CFrame.LookVector * flySpeed)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                    velocity = velocity - (camera.CFrame.LookVector * flySpeed)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    velocity = velocity - (camera.CFrame.RightVector * flySpeed)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    velocity = velocity + (camera.CFrame.RightVector * flySpeed)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                    velocity = velocity + Vector3.new(0, flySpeed, 0)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                    velocity = velocity - Vector3.new(0, flySpeed, 0)
+                end
+            end
+            
+            flyBV.Velocity = velocity
+            
+            -- 平滑朝向
+            if camera then
+                flyBG.CFrame = CFrame.lookAt(root.Position, root.Position + camera.CFrame.LookVector)
+            end
+        end)
+    end
+    
+    local function stopFly()
+        flying = false
+        
+        if flyConnection then
+            flyConnection:Disconnect()
+            flyConnection = nil
+        end
+        
+        if flyBV then
+            flyBV:Destroy()
+            flyBV = nil
+        end
+        
+        if flyBG then
+            flyBG:Destroy()
+            flyBG = nil
+        end
+        
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum.PlatformStand = false
+            end
+        end
+    end
+    
+    local function toggleFly()
+        if flying then
+            stopFly()
+        else
+            startFly()
+        end
+    end
+    
+    -- TPWalk函数
+    local function getHum()
+        local character = LocalPlayer.Character
+        if character then
+            return character:FindFirstChildOfClass("Humanoid")
+        end
+        return nil
+    end
+    
+    local function getChar()
+        return LocalPlayer.Character
+    end
+    
+    local function stopTPWalk()
+        if TPWalk then
+            TPWalk = false
+            if TPWalkingConnection then
+                TPWalkingConnection:Disconnect()
+                TPWalkingConnection = nil
+            end
+        end
+    end
+    
+    local function startTPWalk(speed)
+        if TPWalk then
+            stopTPWalk()
+            return
+        end
+        
+        currentSpeed = tonumber(speed) or currentSpeed
+        TPWalk = true
+        
+        TPWalkingConnection = RunService.Stepped:Connect(function(_, deltaTime)
+            if TPWalk then
+                local humanoid = getHum()
+                if humanoid and humanoid.MoveDirection.Magnitude > 0 then
+                    local moveDirection = humanoid.MoveDirection
+                    local translation = moveDirection * currentSpeed * deltaTime * 10
+                    local character = getChar()
+                    if character then
+                        character:TranslateBy(translation)
+                    end
+                end
+            end
+        end)
+    end
+    
+    LocalPlayer.CharacterAdded:Connect(setupCharacter)
+    setupCharacter()
+    
+    -- 简化的ESP配置
+    local DrawingConfig = {
+        Enabled = false,
+        NameEnabled = true,
+        DistanceEnabled = true,
+        HealthEnabled = true,
+        HealthText = true,  -- 新增：HP文本显示
+        
+        NameColor = Color3.fromRGB(255, 255, 255),
+        DistanceColor = Color3.fromRGB(200, 200, 200),
+        HealthColor = Color3.fromRGB(0, 255, 0),
+    }
+    
+    -- 简化的ESP创建函数
+    local function createSimpleESP(character, player, enabled)
+        local billboard = character:FindFirstChild("SimpleESP")
+        if not billboard and enabled then
+            billboard = Instance.new("BillboardGui")
+            billboard.Name = "SimpleESP"
+            billboard.Size = UDim2.new(0, 200, 0, 60)
+            billboard.StudsOffset = Vector3.new(0, 6, 0)
+            billboard.AlwaysOnTop = true
+            billboard.Enabled = true
+            billboard.Parent = character
+            
+            local textLabel = Instance.new("TextLabel")
+            textLabel.Name = "ESPText"
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.BackgroundTransparency = 1
+            textLabel.Font = Enum.Font.Gotham
+            textLabel.TextSize = 12
+            textLabel.TextColor3 = Color3.new(1, 1, 1)
+            textLabel.TextStrokeTransparency = 0.5
+            textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+            textLabel.RichText = true
+            textLabel.TextYAlignment = Enum.TextYAlignment.Top
+            textLabel.Parent = billboard
+            
+            espCache[character] = {
+                Billboard = billboard,
+                TextLabel = textLabel
+            }
+        end
+        
+        if billboard then
+            local textLabel = billboard:FindFirstChild("ESPText")
+            if textLabel then
+                local humanoid = character:FindFirstChild("Humanoid")
+                local rootPart = character:FindFirstChild("HumanoidRootPart")
+                
+                if humanoid and rootPart and humanoid.Health > 0 then
+                    local distance = math.round(LocalPlayer:DistanceFromCharacter(rootPart.Position))
+                    local health = math.floor(humanoid.Health)
+                    local maxHealth = math.floor(humanoid.MaxHealth)
+                    
+                    local texts = {}
+                    
+                    if DrawingConfig.NameEnabled then
+                        table.insert(texts, string.format("<font color='rgb(%d,%d,%d)'>%s</font>", 
+                            DrawingConfig.NameColor.R * 255,
+                            DrawingConfig.NameColor.G * 255,
+                            DrawingConfig.NameColor.B * 255,
+                            player.Name))
+                    end
+                    
+                    if DrawingConfig.DistanceEnabled then
+                        table.insert(texts, string.format("<font color='rgb(%d,%d,%d)'>距离: %dm</font>", 
+                            DrawingConfig.DistanceColor.R * 255,
+                            DrawingConfig.DistanceColor.G * 255,
+                            DrawingConfig.DistanceColor.B * 255,
+                            distance))
+                    end
+                    
+                    if DrawingConfig.HealthEnabled and DrawingConfig.HealthText then
+                        local healthColor = DrawingConfig.HealthColor
+                        table.insert(texts, string.format("<font color='rgb(%d,%d,%d)'>HP: %d/%d</font>", 
+                            healthColor.R * 255,
+                            healthColor.G * 255,
+                            healthColor.B * 255,
+                            health, maxHealth))
+                    end
+                    
+                    textLabel.Text = table.concat(texts, "\n")
+                    billboard.Enabled = enabled
+                else
+                    billboard.Enabled = false
+                end
+            end
+        end
+    end
+    
+    local function clearESP()
+        for character, cache in pairs(espCache) do
+            if cache.Billboard then 
+                cache.Billboard:Destroy() 
+            end
+        end
+        espCache = {}
+    end
+    
+    local function startESP()
+        if espLoop then espLoop:Disconnect() end
+        
+        espLoop = RunService.Heartbeat:Connect(function()
+            if not DrawingConfig.Enabled then
+                clearESP()
+                return
+            end
+            
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    local character = player.Character
+                    createSimpleESP(character, player, DrawingConfig.Enabled)
+                end
+            end
+        end)
+    end
+
+    local LP = game:GetService("Players").LocalPlayer
+game:GetService("RunService").Heartbeat:Connect(function()
+    if fk3rd then
+        LP.CameraMode = Enum.CameraMode.Classic
+        LP.CameraMaxZoomDistance = 20
+        LP.CameraMinZoomDistance = 20
+    end
+end)
+
+
+
+    
+    local Window = WindUI:CreateWindow({
+        Title = "Snow Script",
+        Icon = "snowflake",
+        IconThemed = true,
+        Author = "On Top Dev.Ninzo",
+        Theme = 'Frosted Glacier',
+        Size = UDim2.fromOffset(800, 500),  -- 缩小尺寸
+        MinSize = Vector2.new(500, 300),    -- 最小尺寸
+        Transparent = true,
+        SideBarWidth = 180,  -- 缩小侧边栏
+        HideSearchBar = true,
+        ScrollBarEnabled = true,
+    })
+    
+    Window:Tag({
+        Title = "v2",
+        Icon = "shield",
+        Color = Color3.fromHex("#008cff"),
+        Radius = 13,
+    })
+    
+    Window:EditOpenButton({
+        Title = "Snow",
+        Icon = "snowflake",
+        CornerRadius = UDim.new(0, 6),
+        StrokeThickness = 1,
+        Draggable = false,
+    })
+    
+    local Main = Window:Section({ Title = "主菜单", Opened = true })
+    local msgg = Main:Tab({ Title = "公告" })
+    local Player = Main:Tab({ Title = "玩家" })
+    local Esp = Main:Tab({ Title = "视觉" })
+    Window:Divider()
+    local servername = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+    msgg:Paragraph({
+        Title = "官方Q群: 435983304",
+        Image = "send"
+    })
+    
+    msgg:Paragraph({
+        Title = "当前服务器: " .. servername,
+        Image = "snowflake"
+    })
+    
+    msgg:Paragraph({
+        Title = "如果未加载出控件 请等待一段时间",
+        Image = "rbxassetid://107633504561046"
+    })
+
+    msgg:Paragraph({
+        Title = "官方DC:discord.gg/54MbbJzpnv",
+        Image = "rbxassetid://107633504561046"
+    })
+
+    msgg:Paragraph({
+        Title = "如有疑问 请求更新 bug修复 请加入官方DC",
+        Image = "rbxassetid://107633504561046"
+    })
+    if not UserInputService.TouchEnabled then
+        Player:Keybind({
+            Title = "隐藏界面",
+            Value = "G",
+            Callback = function(v)
+                Window:SetToggleKey(Enum.KeyCode[v])
+            end
+        })
+    end
+    
+    -- 飞行功能
+    Player:Section({ Title = "飞行控制" })
+    
+    Player:Slider({
+        Title = "飞行速度",
+        Value = {
+            Min = 10,
+            Max = 200,
+            Default = 50,
+        },
+        Callback = function(value)
+            flySpeed = value
+        end
+    })
+    
+    Player:Toggle({
+        Title = "飞行模式",
+        Value = false,
+        Callback = function(state)
+            if state then
+                startFly()
+            else
+                stopFly()
+            end
+        end
+    })
+
+    Player:Section({ Title = "移动控制" })
+    
+    Player:Slider({
+        Title = "移动速度",
+        Value = {
+            Min = 1,
+            Max = 100,
+            Default = 10,
+        },
+        Callback = function(value)
+            currentSpeed = value
+        end
+    })
+    
+    Player:Toggle({
+        Title = "加速",
+        Value = false,
+        Callback = function(state)
+            if state then
+                startTPWalk(currentSpeed)
+            else
+                stopTPWalk()
+            end
+        end
+    })
+
+    Player:Toggle({
+        Title = "透明",
+        Value = false,
+        Callback = function()
+local Run = game:GetService("RunService")
+local P = game:GetService("Players").LocalPlayer
+Run.RenderStepped:Connect(function()
+    local Char = P.Character
+    local Root = Char and Char:FindFirstChild("HumanoidRootPart")
+
+    if Root then
+        local Rainbow = Color3.fromHSV((tick() % 5) / 5, 1, 1)
+        for _, v in pairs(Char:GetDescendants()) do
+            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+                if v.Name == "Head" then
+                    v.Transparency = 1 
+                    if v:FindFirstChild("face") then v.face:Destroy() end
+                else
+                    -- 身体其他部位
+                    v.Material = Enum.Material.ForceField
+                    v.Color = Rainbow
+                    v.Transparency = 0.5
+                end
+            end
+        end
+    end
+end)
+        end
+    })
+Player:Toggle({
+    Title = "第三人称",
+    Value = false,
+    Callback = function(v)
+        fk3rd = v
+        if not v then
+            LP.CameraMode = Enum.CameraMode.LockFirstPerson
+            LP.CameraMaxZoomDistance = 0.5
+            LP.CameraMinZoomDistance = 0.5
+        end
+    end
+})
+
+    local flyjump
+    Player:Toggle({
+        Title = "连跳",
+        Value = false,
+        Callback = function(state)
+            if state then
+                if flyjump then flyjump:Disconnect() end
+                flyjump = UserInputService.JumpRequest:Connect(function()
+                    local character = LocalPlayer.Character
+                    if character then
+                        local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+                        if humanoid then
+                            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                        end
+                    end
+                end)
+            else
+                if flyjump then
+                    flyjump:Disconnect()
+                    flyjump = nil
+                end
+            end
+        end
+    })
+    
+    Player:Toggle({
+        Title = "穿墙",
+        Value = false,
+        Callback = function(state)
+            local character = LocalPlayer.Character
+            if character then
+                for _, part in pairs(character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = not state
+                    end
+                end
+            end
+        end
+    })
+    
+    local antivoidloop
+    local function getRoot(character)
+        return character and character:FindFirstChild("HumanoidRootPart") or character:FindFirstChildWhichIsA("BasePart")
+    end
+    
+    Player:Toggle({
+        Title = "防虚空掉落",
+        Value = false,
+        Callback = function(state)
+            if state then
+                if antivoidloop then antivoidloop:Disconnect() end
+                local OrgDestroyHeight = Workspace.FallenPartsDestroyHeight
+                antivoidloop = RunService.Stepped:Connect(function()
+                    local char = LocalPlayer.Character
+                    if char then
+                        local root = getRoot(char)
+                        if root and root.Position.Y <= OrgDestroyHeight + 25 then
+                            root.Velocity = root.Velocity + Vector3.new(0, 250, 0)
+                        end
+                    end
+                end)
+            else
+                if antivoidloop then
+                    antivoidloop:Disconnect()
+                    antivoidloop = nil
+                end
+            end
+        end
+    })
+
+    Esp:Toggle({
+        Title = "开启ESP",
+        Value = false,
+        Callback = function(state)
+            DrawingConfig.Enabled = state
+            if state then
+                startESP()
+            else
+                if espLoop then
+                    espLoop:Disconnect()
+                    espLoop = nil
+                end
+                clearESP()
+            end
+        end
+    })
+    
+    Esp:Toggle({
+        Title = "显示玩家名",
+        Value = DrawingConfig.NameEnabled,
+        Callback = function(state)
+            DrawingConfig.NameEnabled = state
+        end
+    })
+    
+    Esp:Toggle({
+        Title = "显示距离",
+        Value = DrawingConfig.DistanceEnabled,
+        Callback = function(state)
+            DrawingConfig.DistanceEnabled = state
+        end
+    })
+    
+    Esp:Toggle({
+        Title = "显示HP文本",
+        Value = DrawingConfig.HealthText,
+        Callback = function(state)
+            DrawingConfig.HealthText = state
+        end
+    })
+    
+    Esp:Colorpicker({
+        Title = "名字颜色",
+        Default = DrawingConfig.NameColor,
+        Callback = function(color)
+            DrawingConfig.NameColor = color
+        end
+    })
+    
+    Esp:Colorpicker({
+        Title = "距离颜色",
+        Default = DrawingConfig.DistanceColor,
+        Callback = function(color)
+            DrawingConfig.DistanceColor = color
+        end
+    })
+    
+    Esp:Colorpicker({
+        Title = "HP颜色",
+        Default = DrawingConfig.HealthColor,
+        Callback = function(color)
+            DrawingConfig.HealthColor = color
+        end
+    })
+end
+--手枪竞技场
+local AdP = function(...)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Debris = game:GetService("Debris")
+local TS = game:GetService("TweenService")
+local LP = Players.LocalPlayer
+
+local CurrentTarget, LastShot = nil, 0
+local fkrage, fksp, fk3rd = false, false, false
+local IsShooting = false
+local AttackCooldown = 1.0
+local TargetSwitchCooldown = 0.8
+local LastTargetSwitch = 0
+local SoundCfg = { Id = "rbxassetid://8679627751", Volume = 0.7 }
+
+local function ValidPlayer(p)
+	local c = p.Character
+	return c and c:FindFirstChild("Humanoid") and c.Humanoid.Health > 0 and c:FindFirstChild("Head")
+end
+
+local function HeadVisible(head, origin)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = { LP.Character, head.Parent }
+	local r = Workspace:Raycast(origin, head.Position - origin, params)
+	return not r or r.Instance:IsDescendantOf(head.Parent)
+end
+
+local function GetHead(p)
+	local char, root = p.Character, LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+	if not (char and root) then return end
+	local head = char:FindFirstChild("Head")
+	if head and HeadVisible(head, root.Position) then return head, head.Position end
+end
+
+local function VisibleTargets()
+	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return {} end
+	local t = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LP and ValidPlayer(p) then
+			local h, pos = GetHead(p)
+			if h then table.insert(t, {Player = p, Head = h, Pos = pos, Dist = (pos - root.Position).Magnitude}) end
+		end
+	end
+	table.sort(t, function(a, b) return a.Dist < b.Dist end)
+	return t
+end
+
+local function createTrace(targetPos)
+	local char = LP.Character
+	if not (char and char.PrimaryPart) then return end
+	local S = char.PrimaryPart.Position + Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
+	local mag = (targetPos - S).Magnitude
+	local P = Instance.new("Part")
+	P.Name, P.Anchored, P.CanCollide, P.CastShadow = "Trace", true, false, false
+	P.Material, P.Color, P.Size = Enum.Material.Neon, Color3.fromHSV(tick() % 1, 0.8, 1), Vector3.new(0.15, 0.15, mag)
+	P.CFrame, P.Parent = CFrame.lookAt(S, targetPos) * CFrame.new(0, 0, -mag/2), Workspace
+	TS:Create(P, TweenInfo.new(0.3), {Transparency = 1, Size = Vector3.new(0, 0, mag)}):Play()
+	Debris:AddItem(P, 0.3)
+end
+
+local function Shoot(p, head, pos)
+	if IsShooting then return end
+	if tick() - LastShot < AttackCooldown then return end
+	
+	IsShooting = true
+	
+	local root = LP.Character:FindFirstChild("HumanoidRootPart")
+	if not root then 
+		IsShooting = false
+		return 
+	end
+	
+	createTrace(pos)
+	local s = Instance.new("Sound", Workspace)
+	s.SoundId, s.Volume = SoundCfg.Id, SoundCfg.Volume
+	s:Play(); Debris:AddItem(s, 2)
+	
+	local t, cf = tick(), CFrame.lookAt(root.Position, pos)
+	
+	local actionSyncArgs = {
+		{
+			direction = vector.create(
+				(pos - root.Position).Unit.X,
+				(pos - root.Position).Unit.Y,
+				(pos - root.Position).Unit.Z
+			),
+			hitPosition = vector.create(pos.X, pos.Y, pos.Z),
+			origin = vector.create(root.Position.X, root.Position.Y + 2, root.Position.Z),
+			hitInstance = head,
+			hitHumanoid = p.Character:FindFirstChild("Humanoid"),
+			IsHeadshot = (head.Name == "Head")
+		}
+	}
+	
+	local RS = game:GetService("ReplicatedStorage")
+	pcall(function()
+		RS:WaitForChild("SystemResources"):WaitForChild("BufferCache"):WaitForChild("RequestActionSync"):FireServer(unpack(actionSyncArgs))
+	end)
+	
+	local randomDelay = math.random(-10, 10) / 100
+	wait(0.05 + randomDelay)
+	
+	local fakeBulletArgs = {
+		cf,
+		vector.create(
+			(pos - root.Position).Unit.X,
+			(pos - root.Position).Unit.Y,
+			(pos - root.Position).Unit.Z
+		)
+	}
+	
+	pcall(function()
+		RS:WaitForChild("Events"):WaitForChild("RemoteEvents"):WaitForChild("ReplicateFakeBullet"):FireServer(unpack(fakeBulletArgs))
+	end)
+	
+	wait(0.03)
+	
+	pcall(function()
+		RS:WaitForChild("Events"):WaitForChild("RemoteEvents"):WaitForChild("CharacterMuzzleFlash"):FireServer()
+	end)
+	
+	LastShot = t
+	CurrentTarget = nil
+	
+	wait(0.1)
+	IsShooting = false
+end
+
+RunService.Heartbeat:Connect(function()
+	if fkrage then
+		if IsShooting then return end
+		
+		if CurrentTarget and not ValidPlayer(CurrentTarget) then
+			CurrentTarget = nil
+		end
+		
+		local now = tick()
+		if not CurrentTarget and (now - LastTargetSwitch) > TargetSwitchCooldown then
+			LastTargetSwitch = now
+			local t = VisibleTargets()
+			CurrentTarget = t[1] and t[1].Player
+		end
+		
+		if CurrentTarget and not IsShooting then
+			local h, pos = GetHead(CurrentTarget)
+			if h then 
+				Shoot(CurrentTarget, h, pos)
+			else
+				CurrentTarget = nil
+			end
+		end
+	end
+end)
+
+local rot = 0
+RunService.RenderStepped:Connect(function()
+	if fk3rd then
+		LP.CameraMode = Enum.CameraMode.Classic
+		LP.CameraMaxZoomDistance, LP.CameraMinZoomDistance = 20, 20
+	else
+		LP.CameraMaxZoomDistance, LP.CameraMinZoomDistance = 128, 0.5
+	end
+	local c = LP.Character
+	if fksp and c and c:FindFirstChild("HumanoidRootPart") then
+		rot = rot + 0.35
+		c.HumanoidRootPart.CFrame = CFrame.new(c.HumanoidRootPart.Position) * CFrame.Angles(0, rot, 0)
+	end
+end)
+
+LP.CharacterAdded:Connect(function() 
+	CurrentTarget, LastShot = nil, 0
+	IsShooting = false
+	LastTargetSwitch = 0
+end)
+
+local AdP = Window:Section({ Title = "手枪竞技场", Opened = true })
+local War = AdP:Tab({ Title = "战斗" })
+War:Toggle({ Title = "愤怒机器人", Value = false, Callback = function(v) fkrage = v end })
+War:Toggle({ Title = "人物旋转", Value = false, Callback = function(v) fksp = v end })
+War:Toggle({ Title = "第三人称", Value = false, Callback = function(v) fk3rd = v end })
+
+end
+
+
+local servertable = {
+--[2820580801] = { run = ohio, name = "俄亥俄州 (Ohio)" },
+--[4987856151] = { run = wanted, name = "通缉 (Wanted)" },
+--[9051406594] = { run = Dueling, name = "决斗场 (Dueling Grounds)" },
+--[8795154789] = { run = Flick, name = "闪光 (Flick)" },
+--[9126204352] = { run = SBL, name = "刀刃战利品 (Slasher Blade Loot)" },
+--[6161049307] = { run = PB, name = "像素之刃 (Pixel Blade)" },
+--[1268927906] = { run = LLCQ, name = "力量传奇 (Muscle Legends)"},
+--[1119466531] = { run = SDCQ, name = "速度传奇 (Speed Legends)"},
+--[8779464785] = { run = DJMNQ, name = "点击模拟器 (Tap Simulator)"},
+--[9363735110] = { run = ETFB, name = "逃出海啸! 获得脑力! (Escape Tsunami For Brainrots)"},
+--[1494262959] = { run = CR, name = "犯罪 (Criminality)"},
+--[8950496606] = { run = Deadly, name = "亡命速递 (Deadly Delivery)"},
+--[9323860275] = { run = KSSJ, name = "快速射击 (Quick Shot)"},
+--[3808081382] = { run = TSB, name = "最坚强的战场 (The Strongest Battlegrounds)"},
+[9588121608] = { run = AdP, name = "手枪竞技场 (Arena de Pistolas)"}
+}
+local config = servertable[G_ID]
+if not config then
+    return WindUI:Notify({ Title = "系统", Content = "暂不支持当前服务器", Duration = 5 })
+end
+local success, err = pcall(function()
+win()
+config.run(generateKey())
+end)
+if not success then
+    return WindUI:Notify({ Title = "系统", Content = "出现异常"..err.."           请开票说明 DC票据", Duration = 5 })
+end
+WindUI:Notify({
+Title = "验证成功",
+Content = "已成功加载服务器：" .. config.name,
+Duration = 5
+})
