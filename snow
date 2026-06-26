@@ -1,7 +1,6 @@
 local EditableService = game:GetService("EditableService")
 if not game:IsLoaded() then game.Loaded:Wait() end
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/gycgchgyfytdttr/shenqin/refs/heads/main/ui.lua"))()
-
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/qewwwwwww/666/main/ui.lua"))()
 local p = game:GetService('Players').LocalPlayer
 local c = p.Character or p.CharacterAdded:Wait()
 Instance.new("Model", c).Name = "SecurityModel"
@@ -25,44 +24,140 @@ if key ~= generateKey() then
     while true do end
 end
 end
+local uiUrl = "https://raw.githubusercontent.com/qewwwwwww/666/main/ui.lua"
+local WindUI = loadstring(game:HttpGet(uiUrl))()
+local adminUrl = "https://raw.githubusercontent.com/qewwwwwww/666/main/admin"
+local adminIds = loadstring(game:HttpGet(adminUrl))()
+local blacklistUrl = "https://raw.githubusercontent.com/qewwwwwww/666/main/kick"
+local blacklist = loadstring(game:HttpGet(blacklistUrl))()
+local Players = game:GetService("Players")
+local TextBoxService = game:GetService("TextBoxService")
+local LocalPlayer = Players.LocalPlayer
+local function checkLocalPlayer()
+    for _, blacklistedId in pairs(blacklist) do
+        if LocalPlayer.UserId == blacklistedId then
+            LocalPlayer:Kick("You have been kicked due to being blacklisted. 你因为被列入黑名单而被踢了。")
+        end
+    end
+end
+task.spawn(function()
+    while true and wait(1) do
+        checkLocalPlayer()
+    end
+end)
+local function isAdmin(player)
+    for _, id in pairs(adminIds) do
+        if player.UserId == id then
+            return true
+        end
+    end
+    return false
+end
+local function findPlayer(input)
+    if not input then return nil end
+    for _, p in pairs(Players:GetPlayers()) do
+        if tostring(p.UserId) == input or p.Name:lower():find(input:lower(), 1, true) then
+            return p
+        end
+    end
+    return nil
+end
+local function hookPlayer(player)
+    player.Chatted:Connect(function(msg)
+        if not isAdmin(player) then return end
+        local args = {}
+        for word in msg:gmatch("%S+") do
+            table.insert(args, word)
+        end
+        if args[1] == "kick" and args[2] then
+            local target = findPlayer(args[2])
+            if target and target == LocalPlayer then
+                target:Kick("你被管理踢出 Kicked by admin " .. player.Name)
+            end
+        end
+    end)
+    
+end
+for _, p in pairs(Players:GetPlayers()) do
+    hookPlayer(p)
+end
+Players.PlayerAdded:Connect(hookPlayer)
+local function checkAdmins()
+    local adminCount = 0
+    for _, p in pairs(Players:GetPlayers()) do
+        if isAdmin(p) then
+            adminCount = adminCount + 1
+        end
+    end
+    if adminCount > 0 then
+        WindUI:Notify({
+            Title = "系统提示",
+            Content = "服务器中有 " .. adminCount .. " 名管理员",
+            Duration = 5
+        })
+    end
+end
+checkAdmins()
+--ui
 local win = function(...)
 setfpscap(9999)
 local P, R, S = game:GetService("Players"), game:GetService("RunService"), game:GetService("Stats")
 
-local screenGui = Instance.new("ScreenGui", P.LocalPlayer:WaitForChild("PlayerGui"))
+local screenGui = Instance.new("ScreenGui")
+screenGui.ResetOnSpawn = false
+screenGui.Parent = P.LocalPlayer:WaitForChild("PlayerGui")
 
-local f = Instance.new("Frame")
-f.Size = UDim2.new(0, 0, 0, 25)  -- 宽度设为0，自动调整
-f.Position = UDim2.new(0, 5, 0, 5)
-f.BackgroundTransparency = 0.4
-f.BackgroundColor3 = Color3.new(0, 0, 0)
-f.Active, f.Draggable = true, true
-f.AutomaticSize = Enum.AutomaticSize.X  -- 自动调整宽度
-f.Parent = screenGui
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 150, 0, 50)
+mainFrame.Position = UDim2.new(0, 5, 0, 5)
+mainFrame.BackgroundTransparency = 0.4
+mainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+mainFrame.Active, mainFrame.Draggable = true, true
+mainFrame.Parent = screenGui
 
--- 使用UIListLayout自动排列标签
-local layout = Instance.new("UIListLayout", f)
-layout.FillDirection = Enum.FillDirection.Horizontal
-layout.Padding = UDim.new(0, 5)  -- 标签之间的间距
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-layout.VerticalAlignment = Enum.VerticalAlignment.Center
+local topRow = Instance.new("Frame")
+topRow.Size = UDim2.new(1, 0, 0, 25)
+topRow.Position = UDim2.new(0, 0, 0, 0)
+topRow.BackgroundTransparency = 1
+topRow.Parent = mainFrame
 
--- 添加内边距
-local padding = Instance.new("UIPadding", f)
-padding.PaddingLeft = UDim.new(0, 5)
-padding.PaddingRight = UDim.new(0, 5)
-padding.PaddingTop = UDim.new(0, 3)
-padding.PaddingBottom = UDim.new(0, 3)
+local topLayout = Instance.new("UIListLayout", topRow)
+topLayout.FillDirection = Enum.FillDirection.Horizontal
+topLayout.Padding = UDim.new(0, 5)
+topLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+topLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 
--- 创建标签
+local topPadding = Instance.new("UIPadding", topRow)
+topPadding.PaddingLeft = UDim.new(0, 5)
+topPadding.PaddingRight = UDim.new(0, 5)
+topPadding.PaddingTop = UDim.new(0, 3)
+topPadding.PaddingBottom = UDim.new(0, 3)
+
+local bottomRow = Instance.new("Frame")
+bottomRow.Size = UDim2.new(1, 0, 0, 25)
+bottomRow.Position = UDim2.new(0, 0, 0, 25)
+bottomRow.BackgroundTransparency = 1
+bottomRow.Parent = mainFrame
+
+local bottomLayout = Instance.new("UIListLayout", bottomRow)
+bottomLayout.FillDirection = Enum.FillDirection.Horizontal
+bottomLayout.Padding = UDim.new(0, 5)
+bottomLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+bottomLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+local bottomPadding = Instance.new("UIPadding", bottomRow)
+bottomPadding.PaddingLeft = UDim.new(0, 5)
+bottomPadding.PaddingRight = UDim.new(0, 5)
+bottomPadding.PaddingTop = UDim.new(0, 3)
+bottomPadding.PaddingBottom = UDim.new(0, 3)
+
 local labels = {}
 
--- 创建标签函数
-local function createLabel(text, color, autoSize)
-    local label = Instance.new("TextLabel", f)
+local function createLabel(text, color, autoSize, fontSize, parent)
+    local label = Instance.new("TextLabel", parent)
     label.BackgroundTransparency = 1
     label.Font = Enum.Font.Code
-    label.TextSize = 12
+    label.TextSize = fontSize
     label.TextColor3 = color
     label.Text = text
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -71,33 +166,38 @@ local function createLabel(text, color, autoSize)
         label.AutomaticSize = Enum.AutomaticSize.X
         label.Size = UDim2.new(0, 0, 1, 0)
     else
-        -- 使用TextService计算文本宽度
         local textService = game:GetService("TextService")
-        local textSize = textService:GetTextSize(text, 12, Enum.Font.Code, Vector2.new(1000, 1000))
+        local textSize = textService:GetTextSize(text, fontSize, Enum.Font.Code, Vector2.new(1000, 1000))
         label.Size = UDim2.new(0, textSize.X, 1, 0)
     end
     
     return label
 end
 
--- 创建所有标签
-labels[1] = createLabel("FPS:", Color3.new(1, 1, 1), false)  -- 静态标签
-labels[2] = createLabel("0", Color3.fromRGB(0, 200, 255), true)  -- 动态标签
-labels[3] = createLabel("Ping:", Color3.new(1, 1, 1), false)  -- 静态标签
-labels[4] = createLabel("0", Color3.fromRGB(0, 200, 255), true)  -- 动态标签
+labels[1] = createLabel("FPS:", Color3.new(1, 1, 1), false, 12, topRow)
+labels[2] = createLabel("0", Color3.fromRGB(0, 200, 255), true, 12, topRow)
+labels[3] = createLabel("Ping:", Color3.new(1, 1, 1), false, 12, topRow)
+labels[4] = createLabel("0", Color3.fromRGB(0, 200, 255), true, 12, topRow)
 
--- 更新帧率和延迟
+labels[5] = createLabel("XYZ:", Color3.new(1, 1, 1), false, 10, bottomRow)
+labels[6] = createLabel("0, 0, 0", Color3.fromRGB(0, 200, 255), true, 10, bottomRow)
+
 local t, c = 0, 0
 R.Heartbeat:Connect(function()
     c += 1
     if tick() - t >= 1 then
         labels[2].Text = tostring(c)
-        
-
         local ping = S.Network.ServerStatsItem["Data Ping"]:GetValue()
         labels[4].Text = tostring(math.floor(ping))
-        
         c, t = 0, tick()
+    end
+    
+    local char = P.LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local pos = char.HumanoidRootPart.Position
+        labels[6].Text = string.format("%.1f, %.1f, %.1f", pos.X, pos.Y, pos.Z)
+    else
+        labels[6].Text = "0, 0, 0"
     end
 end)
 WindUI:AddTheme({
@@ -785,7 +885,6 @@ local ohio = function(...)
     
     local rs = game:GetService("RunService")
     local lp = game:GetService("Players").LocalPlayer
-    local Players = game:GetService("Players")
     local localPlayer = Players.LocalPlayer
     local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
     local rootPart = character:WaitForChild("HumanoidRootPart")
@@ -814,20 +913,119 @@ local ohio = function(...)
         end
     end
 
-    local function GetTNT()
-        tntid = GetGuid('TNT')
-        if not tntid then
-            InvokeServer('attemptPurchase', 'TNT')
-        end
-    end
-
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Signal = require(ReplicatedStorage.devv.client.Helpers.remotes.Signal)
     local FireServer, InvokeServer = Signal.FireServer, Signal.InvokeServer
     local Inventory = require(ReplicatedStorage.devv).load("v3item").inventory
     local NextThrow = 0
 
-    -- 偷盗银行
+    local FromATM, FromBank, autobx, autozbd, sell, remls, autouse = false, false, false, false, false, false, false
+    local autovest, autohealth, autokz, callphone, Auarcuff = false, false, false, false, false
+    local FromBalloon, automoney, autoptbs, autoxybs, autoxywp, automoss, autoblock, card = false, false, false, false, false, false, false, false
+    local AntiDoll, AntiAdmin, openfake = false, false, false
+    
+    getgenv().fbx = 0
+    getgenv().fby = 0
+    getgenv().fbz = 5
+    getgenv().fbsx = "Ninja Star"
+    local targetPlayers = {}
+    local lastAttack = 0
+    local avoidPosition = Vector3.new(-23.943367, 53.9272232, -40.3150673)
+    local avoidRadius = 100
+    local playerDropdown
+    local isBlinkActive = false
+    local originalPosition = nil
+    local blinkStartTime = 0
+    local aurablade = false
+
+    getgenv().purchaseTeleport = true
+    getgenv().returnTeleport = true
+    local shoppingOrigin = nil
+    local purchaseQueue = {}
+    local isPurchasing = false
+    local returnTimer = nil
+    local returnDelay = 0.5
+    
+    local PurchaseCoords = {
+        ["Light Vest"] = CFrame.new(1590.4, 6.4, -628.1),
+        ["Lockpick"] = CFrame.new(1622.4, 6.5, -631.4),
+        ["TNT"] = CFrame.new(1522.6, 6.4, -911.0),
+        ["Black Bandana"] = CFrame.new(605.8, 6.3, -1018.4),
+        ["Bandage"] = CFrame.new(1166.5, 26.6, -972.7),
+        ["Raygun"] = CFrame.new(148.7, -95.6, -529.3),
+        ["Ninja Star"] = CFrame.new(337.8, 27.0, -170.6),
+        ["Banana Peel"] = CFrame.new(1318.4, 6.4, -589.8),
+        ["Tomahawk"] = CFrame.new(1027.2, -47.2, -148.4),
+    }
+
+    function SmartTeleportPurchase(itemName)
+        if not getgenv().purchaseTeleport then
+            return InvokeServer('attemptPurchase', itemName)
+        end
+        
+        local targetCF = PurchaseCoords[itemName]
+        if not targetCF then
+            return InvokeServer('attemptPurchase', itemName)
+        end
+        
+        local Players = game:GetService("Players")
+        local localPlayer = Players.LocalPlayer
+        local character = localPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then
+            return false
+        end
+        
+        local hrp = character.HumanoidRootPart
+        
+        if not shoppingOrigin then
+            shoppingOrigin = hrp.CFrame
+        end
+        
+        hrp.CFrame = targetCF
+        task.wait(0.3)
+        
+        local success, result = pcall(function()
+            return InvokeServer('attemptPurchase', itemName)
+        end)
+        
+        if getgenv().returnTeleport and shoppingOrigin then
+            task.wait(0.1)
+            
+            if #purchaseQueue > 0 then
+                task.spawn(function()
+                    ProcessPurchaseQueue()
+                end)
+            else
+                hrp.CFrame = shoppingOrigin
+                shoppingOrigin = nil
+            end
+        end
+        
+        return success
+    end
+
+    function BuyItemQueue(itemName)
+        table.insert(purchaseQueue, itemName)
+        if not isPurchasing then
+            ProcessPurchaseQueue()
+        end
+    end
+
+    function ProcessPurchaseQueue()
+        if #purchaseQueue == 0 then
+            isPurchasing = false
+            return
+        end
+        
+        isPurchasing = true
+        local itemName = table.remove(purchaseQueue, 1)
+        
+        SmartTeleportPurchase(itemName)
+        
+        task.wait(0.5)
+        ProcessPurchaseQueue()
+    end
+
     rs.Heartbeat:Connect(function()
         if not FromBank then return end
 
@@ -841,17 +1039,17 @@ local ohio = function(...)
             if tick() < NextThrow then return end
             NextThrow = tick() + 5
 
-            rootPart.CFrame = CFrame.new(1123.54749, 8.31286526, -364.052216)
-
             local TNT
             for _, v in pairs(Inventory.items) do
                 if v.name == "TNT" then TNT = v.guid break end
             end
 
             if not TNT then
-                InvokeServer("attemptPurchase", "TNT")
+                BuyItemQueue("TNT")
                 return
             end
+
+            rootPart.CFrame = CFrame.new(1123.54749, 8.31286526, -364.052216)
 
             local vaultPos = Vector3.new(1123.70703125, 13.76093578338623, -353.52301025390625)
             local direction = (vaultPos - rootPart.Position).Unit
@@ -872,7 +1070,6 @@ local ohio = function(...)
         end
     end)
 
-    --自动查找物品
     local childrenCache = {}
     local itemMap= {}
     local function updateCache()
@@ -941,7 +1138,7 @@ local ohio = function(...)
     end)
 
     rs.Heartbeat:Connect(function()
-        if FromBalloon then -- 气球
+        if FromBalloon then
             for _,v in pairs(game:GetService("ReplicatedStorage").devv.shared.Indicies.v3items.bin.Holdable:GetChildren()) do
                 if v:IsA("ModuleScript") then
                     local itemData = require(v)
@@ -993,7 +1190,7 @@ local ohio = function(...)
     local sig = require(game:GetService("ReplicatedStorage").devv).load("Signal")
     local ps, lp, lastTick = game:GetService("Players"), game:GetService("Players").LocalPlayer, 0
 
-    game:GetService("RunService").Heartbeat:Connect(function()
+    rs.Heartbeat:Connect(function()
         if callphone then
             if tick() - lastTick < 0.5 then return end
             lastTick = tick()
@@ -1008,7 +1205,7 @@ local ohio = function(...)
         end
     end)
 
-    game:GetService("RunService").Heartbeat:Connect(function()
+    rs.Heartbeat:Connect(function()
         if Auarcuff then
             local devv = require(ReplicatedStorage.devv)
             local ClientReplicator = devv.load("ClientReplicator")
@@ -1028,8 +1225,8 @@ local ohio = function(...)
                 if player ~= LocalPlayer and player.Character then
                     local hum = player.Character:FindFirstChild("Humanoid")
                     local root = player.Character:FindFirstChild("HumanoidRootPart")
-                    if hum and root and hum.Health > 0 and hum.Health < 5 then
-                        if (myRoot.Position - root.Position).Magnitude <= 30 then
+                    if hum and root and hum.Health > 0 and hum.Health < 10 then
+                        if (myRoot.Position - root.Position).Magnitude <= 50 then
                             if not ClientReplicator.Get(player, "cuffed") then
                                 FireServer("equip", Handcuffs)
                                 FireServer("cuffPlayer", player)
@@ -1041,8 +1238,7 @@ local ohio = function(...)
         end
     end)
 
-    --fake
-    game:GetService('RunService').Heartbeat:Connect(function()
+    rs.Heartbeat:Connect(function()
         if openfake then
             local v_u_1 = require(game:GetService("ReplicatedStorage").devv).load
             local v_u_2 = v_u_1("moneyDisplay")
@@ -1056,34 +1252,6 @@ local ohio = function(...)
         end
     end)
 
-    local lastCheck = 0
-    game:GetService('RunService').Heartbeat:Connect(function()
-        if autokz then
-            if tick() - lastCheck < 2 then
-                return
-            end
-            lastCheck = tick()
-            local Mask = character:FindFirstChild("Black Bandana")
-            if not Mask then
-                kzid = GetGuid('Black Bandana')
-                if not kzid then
-                    InvokeServer('attemptPurchase', 'Black Bandana')
-                end
-                for i, v in next, items do
-                    if v.name == "Black Bandana" then
-                        sugid = v.guid
-                        if not Mask then
-                            FireServer("equip", sugid)
-                            FireServer("wearMask", sugid)
-                        end
-                        break
-                    end
-                end
-            end
-        end
-    end)
-
-    --silent aim
     local silentaim = false
     local function findTarget()
         if not silentaim then return nil end
@@ -1114,6 +1282,7 @@ local ohio = function(...)
         local success, loadModule = pcall(function() 
             return require(ReplicatedStorage:WaitForChild("devv")).load 
         end)
+        
         if not success then return end
         local v3item = loadModule("v3item")
         if v3item and v3item.projectiles then
@@ -1129,7 +1298,6 @@ local ohio = function(...)
     end
     setupHooks()
 
-    --safe
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
     local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -1147,45 +1315,32 @@ local ohio = function(...)
         tween.Completed:Wait()
     end
 
-    --auto
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local RunService = game:GetService("RunService")
-    local zbtick = 0  -- 初始化时间记录
+    local TS = game:GetService("TweenService")
+    local DB = game:GetService("Debris")
 
-    RunService.Heartbeat:Connect(function()
-        if autozbd then
-            if tick() - zbtick < 0.3 then
-                return
-            end
-            zbtick = tick()
-            local cases = Workspace:FindFirstChild("GemRobbery"):FindFirstChild("JewelryCases")
-            if cases then
-                for _, descendant in pairs(cases:GetDescendants()) do
-                    if not state then break end
-                    if descendant:IsA("ProximityPrompt") and descendant.ActionText == "Steal" and descendant.Enabled == true then
-                        descendant.HoldDuration = 0
-                        Teleport(CFrame.new(descendant.Parent.Position + Vector3.new(0, 0, 0)))
-                        fireproximityprompt(descendant)
-                    end
-                end
-            end
-        end
-    end)
+    local LP = Players.LocalPlayer
+    local Devv = require(ReplicatedStorage.devv)
+    local Remote = require(ReplicatedStorage.devv.client.Helpers.remotes.Signal)
+    local Inventory = Devv.load("v3item").inventory
+    local guid = Devv.load("GUID")
 
-    RunService.Heartbeat:Connect(function()
-        if autouse then
-            for i, v in pairs(items) do
-            if v.type == "Consumable" and v.subtype ~= "vest" and v.subtype ~= "food" and v.name ~= "Lockpick" then
-            FireServer("equip", v.guid)
-            FireServer("useConsumable", v.guid)
-            FireServer("removeItem", v.guid)
-            end
-            end
-        end
+    local lastMaskCheck = 0
+    local maskProcessing = false
+    local lastCombatTime = 0
+    
+    rs.Heartbeat:Connect(function()
+        local now = tick()
+        if now - lastCombatTime < 0.05 then return end
+        lastCombatTime = now
+        
         if autohealth then
             local character = game:GetService("Players").LocalPlayer.Character
             bdid = GetGuid('Bandage')
             if not bdid then
-                InvokeServer('attemptPurchase', 'Bandage')
+                BuyItemQueue('Bandage')
                 return
             end
             for i, v in next, items do
@@ -1205,7 +1360,7 @@ local ohio = function(...)
         if autovest then
             veid = GetGuid('Light Vest')
             if not veid then
-                InvokeServer('attemptPurchase', 'Light Vest')
+                BuyItemQueue('Light Vest')
                 return
             end
             for i, v in next, items do
@@ -1222,47 +1377,56 @@ local ohio = function(...)
             end
         end
 
-        if autobx then
-            veid = GetGuid('Lockpick')
-            if not veid then
-                InvokeServer('attemptPurchase', 'Lockpick')
+        if autokz then
+            if now - lastMaskCheck < 5 then
                 return
             end
-            local chestTypes = {"SmallChest", "LargeChest", "SmallSafe", "MediumSafe", "LargeSafe", "JewelSafe", "GoldJewelSafe"}
-            for _, chestType in pairs(chestTypes) do
-                local chestFolder = workspace.Game.Entities:FindFirstChild(chestType)
-                if chestFolder then
-                    for _, chest in pairs(chestFolder:GetChildren()) do
-                        if not state then break end
-                        if chest.PrimaryPart then
-                            local prompt = chest:FindFirstChild("ProximityPrompt", true)
-                            if prompt and prompt.Enabled then
-                                Teleport(chest.PrimaryPart.CFrame * CFrame.new(0, 3, 0))
-                                fireproximityprompt(prompt)
-                            end
+            lastMaskCheck = now
+            
+            if maskProcessing then
+                return
+            end
+            
+            maskProcessing = true
+            
+            local Mask = character:FindFirstChild("Black Bandana")
+            if not Mask then
+                kzid = GetGuid('Black Bandana')
+                if not kzid then
+                    BuyItemQueue('Black Bandana')
+                else
+                    for i, v in next, items do
+                        if v.name == "Black Bandana" then
+                            sugid = v.guid
+                            FireServer("equip", sugid)
+                            FireServer("wearMask", sugid)
+                            break
                         end
                     end
                 end
             end
+            
+            maskProcessing = false
         end
+    end)
 
-        if sell then
-            for i, v in pairs(items) do
-                if (v.type == "Holdable" and v.subtype == "gem" and v.sellPrice < 5000) or (v.subtype == "valuable") or (v.type == "Gun" and v.cost < 3999 and v.name ~= "Raygun")then
-                    FireServer("equip", v.guid)
-                    FireServer("sellItem", v.guid)
+    local lastFindTime = 0
+    rs.Heartbeat:Connect(function()
+        local now = tick()
+        if now - lastFindTime < 0.1 then return end
+        lastFindTime = now
+        
+        if FromBalloon then
+            for _,v in pairs(game:GetService("ReplicatedStorage").devv.shared.Indicies.v3items.bin.Holdable:GetChildren()) do
+                if v:IsA("ModuleScript") then
+                    local itemData = require(v)
+                    if itemData.holdableType == "Balloon" and itemData.name ~= 'Balloon' then
+                        Autoitem(v.Name)
+                    end
                 end
             end
         end
-
-        if remls then
-            for i, v in pairs(items) do
-                if (v.type == "Consumable" and v.subtype == "food" and v.name ~= "Bandage" ) or (v.type == "Throwable" and v.cost < 500 and v.name ~= "Ninja Star" and v.name ~= "Tomahawk") or (v.type == "Melee" and v.cost > 100 ) then
-                    FireServer("removeItem", v.guid)
-                end
-            end
-        end
-
+        
         if autoblock then
             Autoitem("Green Lucky Block")
             Autoitem("Orange Lucky Block")
@@ -1275,13 +1439,13 @@ local ohio = function(...)
         end
 
         if autoxybs then
-            Autoitem("Diamond") --钻石
-            Autoitem("Void Gem") --虚空宝石
-            Autoitem("Dark Matter Gem") -- 暗物质宝石
-            Autoitem("Rollie") --劳力士
-            Autoitem("Gold Crown")     -- 金皇冠
-            Autoitem("Gold Cup")       -- 金杯
-            Autoitem("Pearl Necklace")          -- 珍珠项链
+            Autoitem("Diamond")
+            Autoitem("Void Gem")
+            Autoitem("Dark Matter Gem")
+            Autoitem("Rollie")
+            Autoitem("Gold Crown")
+            Autoitem("Gold Cup")
+            Autoitem("Pearl Necklace")
         end
 
         if autoxywp then
@@ -1321,30 +1485,142 @@ local ohio = function(...)
         end
     end)
 
-    --Kill AuraRange
-    local Players = game:GetService("Players")
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local RunService = game:GetService("RunService")
-    local TS = game:GetService("TweenService")
-    local DB = game:GetService("Debris")
+    local chestIndex = 1
+    local chestList = {}
+    local lastChestTime = 0
+    local chestInterval = 0.5
+    local lastTeleportTime = 0
+    local teleportCooldown = 0.2
+    
+    rs.Heartbeat:Connect(function()
+        if not autobx then
+            chestIndex = 1
+            chestList = {}
+            return
+        end
+        
+        local now = tick()
+        if now - lastChestTime < chestInterval then return end
+        lastChestTime = now
+        
+        if now - lastTeleportTime < teleportCooldown then
+            return
+        end
+        
+        veid = GetGuid('Lockpick')
+        if not veid then
+            BuyItemQueue('Lockpick')
+            return
+        end
+        
+        local hasLockpick = false
+        for i, v in next, items do
+            if v.name == "Lockpick" then
+                hasLockpick = true
+                break
+            end
+        end
+        
+        if not hasLockpick then
+            return
+        end
+        
+        if #chestList == 0 then
+            chestList = {}
+            chestIndex = 1
+            
+            local chestTypes = {"SmallChest", "LargeChest", "SmallSafe", "MediumSafe", "LargeSafe", "JewelSafe", "GoldJewelSafe"}
+            for _, chestType in pairs(chestTypes) do
+                local chestFolder = workspace.Game.Entities:FindFirstChild(chestType)
+                if chestFolder then
+                    for _, chest in pairs(chestFolder:GetChildren()) do
+                        if not state then break end
+                        if chest.PrimaryPart then
+                            local prompt = chest:FindFirstChild("ProximityPrompt", true)
+                            if prompt and prompt.Enabled then
+                                table.insert(chestList, {
+                                    chest = chest,
+                                    prompt = prompt
+                                })
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        if chestList[chestIndex] then
+            local chestData = chestList[chestIndex]
+            
+            lastTeleportTime = tick()
+            Teleport(chestData.chest.PrimaryPart.CFrame * CFrame.new(0, 3, 0))
+            task.wait(teleportCooldown)
+            
+            if chestData.prompt and chestData.prompt.Enabled then
+                fireproximityprompt(chestData.prompt)
+                task.wait(0.2)
+                chestIndex = chestIndex + 1
+            else
+                table.remove(chestList, chestIndex)
+            end
+        else
+            chestIndex = 1
+            chestList = {}
+        end
+    end)
 
-    local LP = Players.LocalPlayer
-    local Devv = require(ReplicatedStorage.devv)
-    local Remote = require(ReplicatedStorage.devv.client.Helpers.remotes.Signal)
-    local Inventory = Devv.load("v3item").inventory
-    local guid = Devv.load("GUID")
+    local zbtick = 0
+    local lastAutoTime2 = 0
+    rs.Heartbeat:Connect(function()
+        local now = tick()
+        if now - lastAutoTime2 < 0.2 then return end
+        lastAutoTime2 = now
+        
+        if autouse then
+            for i, v in pairs(items) do
+            if v.type == "Consumable" and v.subtype ~= "vest" and v.subtype ~= "food" and v.name ~= "Lockpick" then
+            FireServer("equip", v.guid)
+            FireServer("useConsumable", v.guid)
+            FireServer("removeItem", v.guid)
+            end
+            end
+        end
 
-    getgenv().fbx = 0
-    getgenv().fby = 0
-    getgenv().fbz = 5
-    local targetPlayers = {}
-    local lastAttack = 0
-    local avoidPosition = Vector3.new(-23.943367, 53.9272232, -40.3150673)
-    local avoidRadius = 100
-    local playerDropdown
-    local isBlinkActive = false
-    local originalPosition = nil
-    local blinkStartTime = 0
+        if autozbd then
+            if tick() - zbtick < 0.3 then
+                return
+            end
+            zbtick = tick()
+            local cases = Workspace:FindFirstChild("GemRobbery"):FindFirstChild("JewelryCases")
+            if cases then
+                for _, descendant in pairs(cases:GetDescendants()) do
+                    if not state then break end
+                    if descendant:IsA("ProximityPrompt") and descendant.ActionText == "Steal" and descendant.Enabled == true then
+                        descendant.HoldDuration = 0
+                        Teleport(CFrame.new(descendant.Parent.Position + Vector3.new(0, 0, 0)))
+                        fireproximityprompt(descendant)
+                    end
+                end
+            end
+        end
+
+        if sell then
+            for i, v in pairs(items) do
+                if (v.type == "Holdable" and v.subtype == "gem" and v.sellPrice < 5000) or (v.subtype == "valuable") or (v.type == "Gun" and v.cost < 3999 and v.name ~= "Raygun")then
+                    FireServer("equip", v.guid)
+                    FireServer("sellItem", v.guid)
+                end
+            end
+        end
+
+        if remls then
+            for i, v in pairs(items) do
+                if (v.type == "Consumable" and v.subtype == "food" and v.name ~= "Bandage" ) or (v.type == "Throwable" and v.cost < 500 and v.name ~= "Ninja Star" and v.name ~= "Tomahawk") or (v.type == "Melee" and v.cost > 100 ) then
+                    FireServer("removeItem", v.guid)
+                end
+            end
+        end
+    end)
 
     local function createTrace(targetPos)
         local S = LP.Character.PrimaryPart.Position + Vector3.new(math.random(-15, 15), math.random(-15, 15), math.random(-15, 15))
@@ -1367,8 +1643,8 @@ local ohio = function(...)
             local inv = require(ReplicatedStorage.devv.client.Objects.v3item.modules.inventory)
             local gun = inv.getFromName("Raygun")
             if not gun then
-                Remote.InvokeServer("attemptPurchase", "Raygun")
-                task.wait(0.3)
+                BuyItemQueue("Raygun")
+                task.wait(0.5)
                 gun = inv.getFromName("Raygun")
             end
             if gun then
@@ -1377,19 +1653,29 @@ local ohio = function(...)
             return
         end
 
-        Remote.InvokeServer("attemptPurchase", getgenv().fbsx)
-        local blade
-        for _, v in pairs(Inventory.items) do
-            if v.name == getgenv().fbsx then
-                blade = v.guid
-                break
+        if getgenv().fbsx == "Ninja Star" or getgenv().fbsx == "Tomahawk" or getgenv().fbsx == "Banana Peel" or getgenv().fbsx == "Snowball" then
+            local itemName = getgenv().fbsx
+            local purchaseCoord = PurchaseCoords[itemName]
+            
+            if purchaseCoord then
+                SmartTeleportPurchase(itemName)
+            else
+                InvokeServer("attemptPurchase", itemName)
             end
+            
+            local blade
+            for _, v in pairs(Inventory.items) do
+                if v.name == getgenv().fbsx then
+                    blade = v.guid
+                    break
+                end
+            end
+            task.wait(0.1)
+            Remote.FireServer("equip", blade)
+            task.wait(0.1)
+            local _, id = Remote.InvokeServer("throwSticky", guid(), getgenv().fbsx, blade, Vector3.zero, Vector3.zero)
+            getgenv().bladeid = id
         end
-        task.wait(0.1)
-        Remote.FireServer("equip", blade)
-        task.wait(0.1)
-        local _, id = Remote.InvokeServer("throwSticky", guid(), getgenv().fbsx, blade, Vector3.zero, Vector3.zero)
-        getgenv().bladeid = id
     end
 
     local function updatePlayerList()
@@ -1525,6 +1811,7 @@ local ohio = function(...)
     end)
 
     local Ohio = Window:Section({Title = "Ohio", Opened = true})
+    
     local Combat = Ohio:Tab({Title = "击杀"})
 
     local initialPlayerList = {"ALL"}
@@ -1773,9 +2060,6 @@ local ohio = function(...)
     })
 
     local Countermeasures = Ohio:Tab({ Title = "反制" })
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local reqload = require(ReplicatedStorage.devv).load
-    local makeToast = reqload("makeToast")
 
     Countermeasures:Button({
         Title = "重进当前服务器[慎！]",
@@ -1936,7 +2220,7 @@ local ohio = function(...)
     })
 
     Bypass:Button({
-        Title = "解锁移动经销商",
+        Title = "解锁移动经销商(无法使用)",
         Locked = false,
         Callback = function()
             local Signal = require(game:GetService("ReplicatedStorage").devv.client.Helpers.remotes.Signal)
@@ -2129,10 +2413,10 @@ local ohio = function(...)
         Title = "快速换弹",
         Callback = function()
             local inv = require(game.ReplicatedStorage.devv).load("v3item").inventory.items
-            for k,v in pairs(inv) do 
+            for k,v in pairs(inv) do
                 if v.type == "Gun" then
                     v.reloadTime = 0
-                end 
+                end
             end
             local gunTemplates = game.ReplicatedStorage.devv.shared.Indicies.v3items.bin.Gun
             for _,v in pairs(gunTemplates:GetChildren()) do
@@ -2144,6 +2428,7 @@ local ohio = function(...)
         end
     })
 end
+
 --通缉
 local wanted = function(...)
 secureCheck(...)
@@ -4150,6 +4435,438 @@ local CR = function(...)
         end
     })
 end
+--cw
+local CW = function(...)
+secureCheck(...)
+local Run = game:GetService("RunService")
+local P = game:GetService("Players").LocalPlayer
+
+-- 创建两层圆环：Core(核心亮线) 和 Glow(外围光晕)
+local Core = Instance.new("CylinderHandleAdornment", workspace)
+local Glow = Instance.new("CylinderHandleAdornment", workspace)
+
+local function Set(C, Rad, Thick, Trans)
+    C.Height, C.Radius, C.InnerRadius = 0.1, Rad, Rad - Thick
+    C.AlwaysOnTop, C.Transparency, C.ZIndex = true, Trans, 10
+    C.CFrame = CFrame.Angles(math.rad(90), 0, 0)
+end
+
+Set(Core, 10, 0.1, 0)    -- 核心：细、亮
+Set(Glow, 15.3, 1, 0.7)  -- 光晕：宽、透
+
+Run.RenderStepped:Connect(function()
+    local Root = P.Character and P.Character:FindFirstChild("HumanoidRootPart")
+    if Root then
+        -- 这里的 tick()%10/10 控制颜色流光速度
+        local Color = Color3.fromHSV((tick() % 5) / 5, 1, 1) 
+        
+        Core.Adornee, Glow.Adornee = Root, Root
+        Core.Color3, Glow.Color3 = Color, Color
+        Core.Visible, Glow.Visible = true, true
+        
+        -- 高级特效：光晕呼吸效果 (Transparency 在 0.5 到 0.8 之间波动)
+        Glow.Transparency = 0.65 + math.sin(tick() * 3) * 0.15
+    else
+        Core.Visible, Glow.Visible = false, false
+    end
+end)
+
+local Run, WS, Cam = game:GetService("RunService"), workspace, workspace.CurrentCamera
+local Cache, Cfg = {}, {
+    PlacedClaymore = {N="Claymore", C=Color3.fromRGB(255, 50, 50)},
+    utility7Proxy = {N="C4", C=Color3.fromRGB(255, 150, 50)},
+    utility5Proxy = {N="Grenade", C=Color3.fromRGB(50, 255, 50)},
+    OpenBearTrap = {N="Trap", C=Color3.fromRGB(50, 150, 255)}
+}
+
+local function Make(T, P)
+    local D = Drawing.new(T)
+    for k,v in pairs(P) do D[k]=v end
+    return D
+end
+
+local function Add(Obj)
+    local D = Cfg[Obj.Name]
+    if D and Obj:IsA("BasePart") then
+        Cache[Obj] = {
+            Box = Make("Square", {Thickness=1.5, Color=D.C, Filled=false}),
+            Name = Make("Text", {Text=D.N, Color=D.C, Center=true, Size=13, Outline=true}),
+            Dist = Make("Text", {Color=Color3.new(1,1,1), Center=true, Size=12, Outline=true})
+        }
+    end
+end
+
+local function Scan(P)
+    for _,v in pairs(P:GetChildren()) do Add(v) end
+    P.ChildAdded:Connect(Add)
+end
+Scan(WS); if WS:FindFirstChild("EffectsJunk") then Scan(WS.EffectsJunk) end
+
+Run.RenderStepped:Connect(function()
+    for Obj, D in pairs(Cache) do
+        if Obj.Parent then
+            local Pos, Vis = Cam:WorldToViewportPoint(Obj.Position)
+            if Vis then
+                local Dist = (Cam.CFrame.Position - Obj.Position).Magnitude
+                local Size = 2000 / Dist
+                D.Box.Size = Vector2.new(Size, Size)
+                D.Box.Position = Vector2.new(Pos.X - Size/2, Pos.Y - Size/2)
+                D.Box.Visible = true
+                
+                D.Name.Position = Vector2.new(Pos.X, Pos.Y - Size/2 - 15)
+                D.Name.Visible = true
+                
+                D.Dist.Text = math.floor(Dist).."m"
+                D.Dist.Position = Vector2.new(Pos.X, Pos.Y + Size/2 + 2)
+                D.Dist.Visible = true
+            else
+                D.Box.Visible, D.Name.Visible, D.Dist.Visible = false, false, false
+            end
+        else
+            D.Box:Remove(); D.Name:Remove(); D.Dist:Remove()
+            Cache[Obj] = nil
+        end
+    end
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+_G.SupremeConfig = {
+    InfiniteStamina = true,
+    MaxStamina = 100
+}
+local StaminaHandler = nil
+pcall(function()
+    StaminaHandler = require(ReplicatedStorage.Client.Source.DefaultStamina.DefaultStaminaHandlerClient)
+end)
+
+if not StaminaHandler then
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "getDefaultStamina") then
+            StaminaHandler = v
+            break
+        end
+    end
+end
+RunService.Heartbeat:Connect(function()
+    if _G.SupremeConfig.InfiniteStamina and StaminaHandler then
+        local staminaObject = StaminaHandler.getDefaultStamina()
+        if staminaObject and staminaObject.setStamina then
+            staminaObject:setStamina(_G.SupremeConfig.MaxStamina)
+        end
+    end
+end)
+    local function Notify(title, content)
+        WindUI:Notify({
+            Title = title,
+            Content = content,
+            Duration = 3,
+            Icon = "snowflake", 
+        })
+    end
+    for _, obj in pairs(getgc(true)) do
+        if type(obj) == "table" then
+            for key, value in pairs(obj) do
+                if type(key) == "string" and string.find(key:lower(), "accode") and value == true then
+                    obj[key] = false
+                end
+            end
+           
+            if rawget(obj, "getEnvVariables") and type(obj.getEnvVariables) == "function" then
+                local original = obj.getEnvVariables
+                obj.getEnvVariables = function()
+                    local env = original()
+                    for k in pairs(env) do
+                        if type(k) == "string" and string.find(k:lower(), "accode") then
+                            env[k] = false
+                        end
+                    end
+                    return env
+                end
+            end
+        end
+    end
+
+    local Network = require(game:GetService("ReplicatedStorage").Shared.Vendor.Network)
+    local originalFireServer = Network.FireServer
+    Network.FireServer = function(self, event, ...)
+        if event == "LogACTrigger" or event == "LogKick" then
+            return nil
+        end
+        return originalFireServer(self, event, ...)
+    end
+
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local RunService = game:GetService("RunService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+   
+    _G.SupremeConfig = {
+        KillAura = false,
+        AuraRange = 10,
+        AutoParry = false,
+        ParryRange = 5
+    }
+
+    local lastAttackTime = 0
+    local attackCooldown = 0.5
+
+    local SpeedModule = require(game:GetService("ReplicatedStorage").Client.Source.Movement.WalkSpeedHandlerClient)
+    local container = SpeedModule.getValueContainer()
+    local JumpModule = require(game:GetService("ReplicatedStorage").Client.Source.Jump.JumpHandlerClient) 
+    local jumpContainer = JumpModule.getJumpPowerValueContainer()
+
+    local Main = Window:Section({ Title = "战斗勇士", Opened = true })
+    local CombatTab = Main:Tab({ Title = "战斗" })
+    local AttributeTab = Main:Tab({ Title = "属性" })
+   
+    CombatTab:Toggle({
+        Title = "杀戮光环",
+        Value = false,
+        Callback = function(state)
+            _G.SupremeConfig.KillAura = state
+        end
+    })
+
+    CombatTab:Toggle({
+        Title = "自动格挡",
+        Value = false,
+        Callback = function(state)
+            _G.SupremeConfig.AutoParry = state
+        end
+    })
+
+    CombatTab:Input({
+        Title = "格挡感应距离",
+        Value = "5",
+        Placeholder = "范围",
+        Callback = function(val)
+            _G.SupremeConfig.ParryRange = tonumber(val) or 5
+        end
+    })
+
+    CombatTab:Toggle({
+        Title = "自动空投",
+        Value = false,
+        Callback = function(state)
+            fromairdrop = state
+        end
+    })
+
+    AttributeTab:Toggle({
+        Title = "去除掉落伤害",
+        Value = false,
+        Callback = function(state)
+            _G.NoFallDamage = state
+        end
+    })
+
+    AttributeTab:Toggle({
+        Title = "反布娃娃",
+        Value = false,
+        Callback = function(state)
+            _G.NoRagdoll = state
+        end
+    })
+    AttributeTab:Toggle({
+    Title = "无限体力",
+    Value = false,
+    Callback = function(state) 
+        _G.SupremeConfig.InfiniteStamina = state
+    end
+    })
+
+    AttributeTab:Slider({
+        Title = "体力上限",
+        Value = {
+            Min = 1,
+            Max = 200,
+            Default = 100,
+        },
+        Callback = function(value)
+            _G.SupremeConfig.MaxStamina = tonumber(value) or 100
+        end
+    })
+    AttributeTab:Slider({
+        Title = "移动速度",
+        Value = {
+            Min = 1,
+            Max = 100,
+            Default = 30,
+        },
+        Callback = function(value)
+            container:setBaseValue(value) 
+        end
+    })
+    AttributeTab:Slider({
+        Title = "跳跃高度",
+        Value = {
+            Min = 1,
+            Max = 100,
+            Default = 30,
+        },
+        Callback = function(value)
+            jumpContainer:setBaseValue(value)
+        end
+    })
+    _G.NoFallDamage = false
+    _G.NoRagdoll = false
+    local oldFireServer = Network.FireServer
+
+    Network.FireServer = function(self, remoteName, ...)
+        if _G.NoFallDamage and (remoteName == "TakeFallDamage" or remoteName == "StartFallDamage") then
+            Notify("无敌", "已拦截坠落伤害")
+            return
+        end
+        return oldFireServer(self, remoteName, ...)
+    end
+
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "_doActualRagdoll") and rawget(v, "attemptToggleActualRagdollClient") then
+            local old_toggle = v._toggleActualRagdoll
+            local old_do = v._doActualRagdoll
+            v._toggleActualRagdoll = function(self, isRagdolled)
+                if _G.NoRagdoll and isRagdolled then
+                    Notify("无敌", "已拦截布娃娃状态")
+                    return
+                end
+                return old_toggle(self, isRagdolled)
+            end
+        end
+    end
+
+    local function MonitorParry(char)
+        if char == LocalPlayer.Character then return end
+        
+        local hum = char:WaitForChild("Humanoid", 5)
+        local animator = hum and hum:WaitForChild("Animator", 5)
+        if not animator then return end
+        
+        animator.AnimationPlayed:Connect(function(track)
+            if not _G.SupremeConfig.AutoParry then return end
+            
+            pcall(function()
+                local myChar = LocalPlayer.Character
+                if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
+                
+                local myRoot = myChar.HumanoidRootPart
+                local enemyRoot = char:FindFirstChild("HumanoidRootPart")
+                if myRoot and enemyRoot then
+                    if (myRoot.Position - enemyRoot.Position).Magnitude <= _G.SupremeConfig.ParryRange then
+                        if track.Length > 0 and track.Length < 1.3 then
+                            Network:FireServer("Parry")
+                            Notify("自动格挡", "格挡了 " .. char.Name .. " 的攻击")
+                        end
+                    end
+                end
+            end)
+        end)
+    end
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            MonitorParry(player.Character)
+        end
+        player.CharacterAdded:Connect(MonitorParry)
+    end
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(MonitorParry)
+    end)
+
+    RunService.RenderStepped:Connect(function()
+        if fromairdrop then
+        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            for _, v in pairs(game.Workspace.Map:GetChildren()) do
+                if v.Name:match("Airdrop") then
+                    local Prompt = v:FindFirstChild("ProximityPrompt", true)
+                    if Prompt then
+                        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v:GetPivot() + Vector3.new(0, 3, 0)
+                        Notify("通知", "已传送空投")
+                    end
+                end
+            end
+        end
+        end
+        if not _G.SupremeConfig.KillAura then return end
+       
+        local currentTime = tick()
+        if currentTime - lastAttackTime < attackCooldown then
+            return 
+        end
+       
+        local char = LocalPlayer.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+       
+        local tool = char:FindFirstChildOfClass("Tool")
+        if not tool or not (tool:GetAttribute("ItemType") == "weapon") then return end
+       
+        local hitboxPart = tool:FindFirstChild("Hitbox", true) or tool:FindFirstChild("Hitboxes", true) or tool
+        local myRoot = char.HumanoidRootPart
+        local closestPlayer = nil
+        local closestDistance = math.huge
+        local closestPart = nil
+       
+        for _, enemy in pairs(Players:GetPlayers()) do
+            if enemy ~= LocalPlayer and enemy.Character then
+                local enemyChar = enemy.Character
+                local humanoid = enemyChar:FindFirstChildOfClass("Humanoid")
+                local enemyPart = enemyChar:FindFirstChild("Head") or enemyChar:FindFirstChild("HumanoidRootPart")
+               
+                if humanoid and humanoid.Health > 0 and enemyPart then
+                    local dist = (myRoot.Position - enemyPart.Position).Magnitude
+                    
+                    if dist <= _G.SupremeConfig.AuraRange then
+                        local isBlocking = false
+                        local animator = humanoid:FindFirstChildOfClass("Animator")
+                        if animator then
+                            for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+                                if track.Animation and string.find(track.Animation.AnimationId, "8799568465") then
+                                    if track.IsPlaying then
+                                        isBlocking = true
+                                        Notify("跳过目标", enemy.Name .. " 正在格挡")
+                                        break
+                                    end
+                                end
+                            end
+                        end
+
+                        if not isBlocking and dist < closestDistance then
+                            closestDistance = dist
+                            closestPlayer = enemy
+                            closestPart = enemyPart
+                        end
+                    end
+                end
+            end
+        end
+       
+        if closestPart and closestPlayer then
+            lastAttackTime = currentTime
+            
+            Notify("自动攻击", "正在攻击: " .. closestPlayer.Name)
+           
+            local direction = (closestPart.Position - myRoot.Position).Unit
+            myRoot.CFrame = CFrame.new(myRoot.Position, myRoot.Position + Vector3.new(direction.X, 0, direction.Z))
+           
+            Network:FireServer("MeleeSwing", tool, 1)
+           
+            local lookV = myRoot.CFrame.LookVector
+            Network:FireServer("MeleeDamage",
+                tool,
+                closestPart,
+                hitboxPart,
+                closestPart.Position,
+                closestPart.CFrame,
+                lookV,
+                lookV,
+                Vector3.new(0, 0, 0),
+                0.15 + (math.random() * 0.04)
+            )
+        end
+    end)
+end
 --Deadly
 local Deadly = function(...)
 secureCheck(...)
@@ -4763,6 +5480,7 @@ Tab:Toggle({ Title = "自动朝向", Value = false, Callback = function(v) Setti
 Tab:Toggle({ Title = "微加速", Value = false, Callback = function(v) Settings.SpeedBoost = v end })
 Tab:Toggle({ Title = "高亮", Value = false, Callback = function(v) Settings.FullBright = v end })
 end
+
 --手枪竞技场
 local AdP = function(...)
 local Players = game:GetService("Players")
@@ -4947,9 +5665,929 @@ local War = AdP:Tab({ Title = "战斗" })
 War:Toggle({ Title = "愤怒机器人", Value = false, Callback = function(v) fkrage = v end })
 War:Toggle({ Title = "人物旋转", Value = false, Callback = function(v) fksp = v end })
 War:Toggle({ Title = "第三人称", Value = false, Callback = function(v) fk3rd = v end })
-
 end
 
+--死铁轨
+local DR = function(config)
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Workspace = game:GetService("Workspace")
+    local LP = Players.LocalPlayer
+
+    local TELEPORT_DISTANCE = 100
+    local COLLECT_ID_START = 200
+    local COLLECT_ID_END = 6000
+    local COLLECT_COOLDOWN = 0.02
+    local BAG_COOLDOWN = 0.04
+    
+    local isCollecting = false
+    local isBaging = false
+    local currentCollectId = COLLECT_ID_START
+    local currentBagId = COLLECT_ID_START
+    local collectedIds = {}
+    local totalCollected = 0
+    local isRunning = false
+
+    local function GetRemotePath()
+        local success, remote = pcall(function()
+            return ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Universe"):WaitForChild("Network"):WaitForChild("RemoteEvent"):WaitForChild("Actionable")
+        end)
+        return success and remote or nil
+    end
+
+    local function GetStoreRemote()
+        local success, remote = pcall(function()
+            return ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Universe"):WaitForChild("Network"):WaitForChild("RemoteEvent"):WaitForChild("Store")
+        end)
+        return success and remote or nil
+    end
+
+    local function ProcessCollect(targetId)
+        if not targetId then return end
+        local remotePath = GetRemotePath()
+        if remotePath then
+            pcall(function()
+                remotePath:FireServer(targetId)
+            end)
+        end
+    end
+
+    local function ProcessBag(targetId)
+        if not targetId then return end
+        local storeRemote = GetStoreRemote()
+        if storeRemote then
+            pcall(function()
+                storeRemote:FireServer(targetId)
+                wait(0.008)
+                storeRemote:FireServer()
+            end)
+        end
+    end
+
+    local function TeleportToPosition(pos, lookDir)
+        local char = LP.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            if lookDir then
+                char.HumanoidRootPart.CFrame = CFrame.new(pos, pos + lookDir)
+            else
+                char.HumanoidRootPart.CFrame = CFrame.new(pos)
+            end
+        end
+    end
+
+    local function GetAllBonds()
+        local bonds = {}
+        local objectModels = Workspace:FindFirstChild("ObjectModels")
+        if not objectModels then return bonds end
+        
+        for _, obj in pairs(objectModels:GetChildren()) do
+            if obj:IsA("Model") then
+                for _, child in pairs(obj:GetChildren()) do
+                    if child:IsA("StringValue") and child.Value == "bond" then
+                        local entityServer = obj:GetAttribute("entity_server")
+                        if entityServer then
+                            table.insert(bonds, {
+                                model = obj,
+                                id = entityServer,
+                                position = obj.PrimaryPart and obj.PrimaryPart.Position or nil
+                            })
+                        end
+                        break
+                    end
+                end
+            end
+        end
+        
+        table.sort(bonds, function(a, b)
+            if not a.position then return false end
+            if not b.position then return true end
+            return a.position.Magnitude < b.position.Magnitude
+        end)
+        
+        return bonds
+    end
+
+    local function FindNearestBond(currentPos, processedIds)
+        local nearest = nil
+        local nearestDist = math.huge
+        local bonds = GetAllBonds()
+        
+        for _, bond in ipairs(bonds) do
+            if not processedIds[bond.id] and bond.position then
+                local dist = (bond.position - currentPos).Magnitude
+                if dist < nearestDist then
+                    nearestDist = dist
+                    nearest = bond
+                end
+            end
+        end
+        
+        return nearest
+    end
+
+    local function CollectBond(bond)
+        if not bond or not bond.id then return false end
+        
+        local bondId = tonumber(bond.id)
+        if not bondId then return false end
+        
+        ProcessCollect(bondId)
+        wait(COLLECT_COOLDOWN)
+        ProcessBag(bondId)
+        wait(BAG_COOLDOWN)
+        
+        collectedIds[bond.id] = true
+        totalCollected = totalCollected + 1
+        
+        return true
+    end
+
+    local function StartRailTeleport()
+        if isRunning then return end
+        isRunning = true
+        
+        local decorModel = Workspace:FindFirstChild("RailSegments") and Workspace.RailSegments:FindFirstChild("Decor")
+        if not decorModel or not decorModel.PrimaryPart then
+            warn("未找到起点 Decor 模型")
+            isRunning = false
+            return
+        end
+        
+        local startPos = decorModel.PrimaryPart.Position
+        
+        local railSegmentModel = Workspace:FindFirstChild("RailSegments") and Workspace.RailSegments:FindFirstChild("RailSegment")
+        if not railSegmentModel or not railSegmentModel.PrimaryPart then
+            warn("未找到方向 RailSegment 模型")
+            isRunning = false
+            return
+        end
+        
+        local directionPos = railSegmentModel.PrimaryPart.Position
+        local lookVector = (directionPos - startPos).Unit
+        if lookVector.Magnitude == 0 then
+            warn("起点与终点重合")
+            isRunning = false
+            return
+        end
+        
+        local currentDistance = 0
+        local maxIterations = 500
+        local iteration = 0
+        local processedIds = {}
+        
+        while iteration < maxIterations and isRunning do
+            iteration = iteration + 1
+            currentDistance = currentDistance + TELEPORT_DISTANCE
+            local newPos = startPos + lookVector * currentDistance
+            
+            TeleportToPosition(newPos, lookVector)
+            wait(0.08)
+            
+            local nearestBond = FindNearestBond(newPos, processedIds)
+            
+            while nearestBond and isRunning do
+                local bondPos = nearestBond.position
+                if not bondPos then break end
+                
+                local distToBond = (bondPos - newPos).Magnitude
+                
+                if distToBond > TELEPORT_DISTANCE then
+                    currentDistance = currentDistance + TELEPORT_DISTANCE
+                    newPos = startPos + lookVector * currentDistance
+                    TeleportToPosition(newPos, lookVector)
+                    wait(0.08)
+                else
+                    TeleportToPosition(bondPos, lookVector)
+                    wait(0.1)
+                    
+                    local success = CollectBond(nearestBond)
+                    if success then
+                        processedIds[nearestBond.id] = true
+                    end
+                    
+                    break
+                end
+                
+                nearestBond = FindNearestBond(newPos, processedIds)
+            end
+            
+            if nearestBond then
+                currentDistance = currentDistance + TELEPORT_DISTANCE
+                newPos = startPos + lookVector * currentDistance
+                TeleportToPosition(newPos, lookVector)
+                wait(0.08)
+            end
+        end
+        
+        isRunning = false
+    end
+
+    local DRSection = Window:Section({ Title = "死铁轨", Opened = true })
+    local Auto = DRSection:Tab({ Title = "自动" })
+
+    Auto:Button({
+        Title = "开始死铁轨传送与收集",
+        Callback = function()
+            spawn(StartRailTeleport)
+        end
+    })
+
+    Auto:Button({
+        Title = "停止传送与收集",
+        Callback = function()
+            isRunning = false
+        end
+    })
+
+    Auto:Label({
+        Title = "收集统计",
+        Text = "已收集债券数量: " .. totalCollected
+    })
+
+    Auto:Toggle({
+        Title = "自动收集债券",
+        Value = false,
+        Callback = function(v)
+            isCollecting = v
+            if v then
+                spawn(function()
+                    while isCollecting do
+                        ProcessCollect(currentCollectId)
+                        currentCollectId = currentCollectId + 1
+                        if currentCollectId > COLLECT_ID_END then
+                            currentCollectId = COLLECT_ID_START
+                        end
+                        wait(COLLECT_COOLDOWN)
+                    end
+                end)
+            end
+        end
+    })
+
+    Auto:Toggle({
+        Title = "自动装袋物品",
+        Value = false,
+        Callback = function(v)
+            isBaging = v
+            if v then
+                spawn(function()
+                    while isBaging do
+                        ProcessBag(currentBagId)
+                        currentBagId = currentBagId + 1
+                        if currentBagId > COLLECT_ID_END then
+                            currentBagId = COLLECT_ID_START
+                        end
+                        wait(BAG_COOLDOWN)
+                    end
+                end)
+            end
+        end
+    })
+
+    local statsTimer = 0
+    RunService.Heartbeat:Connect(function(dt)
+        statsTimer = statsTimer + dt
+        if statsTimer >= 1 then
+            statsTimer = 0
+            Auto:SetLabel("收集统计", "已收集债券数量: " .. totalCollected)
+        end
+    end)
+end
+
+--防御
+local Defusal = function(...)
+    secureCheck(...)
+
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local Workspace = game:GetService("Workspace")
+    local Debris = game:GetService("Debris")
+    local TS = game:GetService("TweenService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local UserInputService = game:GetService("UserInputService")
+
+    local LP = Players.LocalPlayer
+    local Character = LP.Character or LP.CharacterAdded:Wait()
+    local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+    local CurrentTarget, LastShot = nil, 0
+    local fkauto, fk3rd, fkwall, fkrotate, isLookingDown = false, false, false, false, nil
+    local MyTeam = nil
+    local targetPlayers = {"ALL"}
+    local playerDropdown = nil
+    local lookControlMode = "none"
+    local shootMode = "normal"
+    local lookLoopTask = nil
+
+    local ShootRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("\224\182\189\224\183\128\224\182\158\224\182\169")
+    local LookRemote = ReplicatedStorage:WaitForChild("RE_0R5lsPxqfSH3")
+    
+    local ShowTrace = true
+    local fkteam = true
+    local spinSpeed = 0.35
+
+    local testNames = {"Team", "team", "TEAM", "TeamID", "TeamName", "Group", "Side"}
+
+    local NormalCooldowns = {
+        ["G-17"] = 0.1,
+        ["Deagle"] = 0.1,
+        ["AK-47"] = 0.1,
+        ["M4A1"] = 0.1,
+        ["M40"] = 0.3,
+        ["AUG"] = 0.1,
+        ["Barrett"] = 0.3,
+        ["USP"] = 0.1,
+        ["TEC-9"] = 0.05,
+        ["Vector"] = 0.05,
+        ["UMP-45"] = 0.05,
+        ["P90"] = 0.05,
+        ["DB Shotgun"] = 0.1,
+        ["M77E"] = 0.3,
+        ["MAG-7"] = 0.1
+    }
+
+    local RageCooldowns = {
+        ["G-17"] = 0.01,
+        ["Deagle"] = 0.01,
+        ["AK-47"] = 0.01,
+        ["M4A1"] = 0.01,
+        ["M40"] = 0.01,
+        ["AUG"] = 0.01,
+        ["Barrett"] = 0.01,
+        ["USP"] = 0.01,
+        ["TEC-9"] = 0.01,
+        ["Vector"] = 0.01,
+        ["UMP-45"] = 0.01,
+        ["P90"] = 0.01,
+        ["DB Shotgun"] = 0.01,
+        ["M77E"] = 0.01,
+        ["MAG-7"] = 0.01
+    }
+
+    local WeaponCooldowns = NormalCooldowns
+
+    local SupportedWeapons = {
+        ["G-17"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("G-17"),
+            param4 = false
+        },
+        ["Deagle"] = {
+            damage = 3.0,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Deagle"),
+            param4 = false
+        },
+        ["AK-47"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("AK-47"),
+            param4 = true
+        },
+        ["M4A1"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M4A1"),
+            param4 = false
+        },
+        ["M40"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M40"),
+            param4 = false
+        },
+        ["AUG"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("AUG"),
+            param4 = false
+        },
+        ["Barrett"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Barrett"),
+            param4 = false
+        },
+        ["USP"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("USP"),
+            param4 = true
+        },
+        ["TEC-9"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("TEC-9"),
+            param4 = true
+        },
+        ["Vector"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Vector"),
+            param4 = false
+        },
+        ["UMP-45"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("UMP-45"),
+            param4 = true
+        },
+        ["P90"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("P90"),
+            param4 = true
+        },
+        ["DB Shotgun"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("DB Shotgun"),
+            param4 = false
+        },
+        ["M77E"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M77E"),
+            param4 = true
+        },
+        ["MAG-7"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("MAG-7"),
+            param4 = true
+        }
+    }
+
+    local function IsSelfAlive()
+        local char = LP.Character
+        if not char then return false end
+        local humanoid = char:FindFirstChild("Humanoid")
+        if not humanoid then return false end
+        if humanoid.Health <= 0 then return false end
+        local aliveAttr = LP:GetAttribute("Alive")
+        if aliveAttr ~= nil then
+            return aliveAttr
+        end
+        aliveAttr = char:GetAttribute("Alive")
+        if aliveAttr ~= nil then
+            return aliveAttr
+        end
+        return true
+    end
+
+    local function GetTeamFromPlayer(p)
+        if not p then return nil end
+        for _, name in ipairs(testNames) do
+            local value = p:GetAttribute(name)
+            if value ~= nil then
+                return tostring(value)
+            end
+        end
+        local char = p.Character
+        if char then
+            for _, name in ipairs(testNames) do
+                local value = char:GetAttribute(name)
+                if value ~= nil then
+                    return tostring(value)
+                end
+            end
+        end
+        if p.Team ~= nil then
+            return p.Team.Name
+        end
+        return nil
+    end
+
+    local function GetMyTeam()
+        local attempts = 0
+        while attempts < 3 do
+            local team = GetTeamFromPlayer(LP)
+            if team then
+                return team
+            end
+            attempts = attempts + 1
+            task.wait(0.3)
+        end
+        return nil
+    end
+
+    local function IsEnemy(p)
+        if p == LP then
+            return false
+        end
+        if not fkteam then
+            return true
+        end
+        if not MyTeam then
+            return false
+        end
+        local pTeam = GetTeamFromPlayer(p)
+        if not pTeam then
+            return false
+        end
+        return pTeam ~= MyTeam
+    end
+
+    local function IsTargetPlayer(p)
+        if targetPlayers[1] == "ALL" then
+            return true
+        end
+        
+        for _, targetName in ipairs(targetPlayers) do
+            if p.Name == targetName then
+                return true
+            end
+        end
+        
+        return false
+    end
+
+    local function IsPlayerAlive(p)
+        local alive = p:GetAttribute("Alive")
+        if alive ~= nil then
+            return alive
+        end
+        local char = p.Character
+        if char then
+            alive = char:GetAttribute("Alive")
+            if alive ~= nil then
+                return alive
+            end
+        end
+        return true
+    end
+
+    local function ValidPlayer(p)
+        local c = p.Character
+        if not c then return false end
+        if not c:FindFirstChild("Humanoid") then return false end
+        if c.Humanoid.Health <= 0 then return false end
+        if not IsPlayerAlive(p) then return false end
+        return true
+    end
+
+    local function GetTargetPart(p)
+        local c = p.Character
+        if not c then return nil end
+        local head = c:FindFirstChild("Head")
+        if head then return head, head.Position end
+        local root = c:FindFirstChild("HumanoidRootPart")
+        if root then return root, root.Position end
+        return nil
+    end
+
+    local function VisibleCheck(part, origin)
+        if fkwall then
+            return true
+        end
+        if not (part and origin) then return false end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = { Character, part.Parent }
+        local r = Workspace:Raycast(origin, part.Position - origin, params)
+        return not r or r.Instance:IsDescendantOf(part.Parent)
+    end
+
+    local function GetTarget()
+        if not IsSelfAlive() then return nil end
+        
+        local root = HumanoidRootPart
+        if not root then return nil end
+        local target = nil
+        local minDist = math.huge
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP and ValidPlayer(p) and IsEnemy(p) and IsTargetPlayer(p) then
+                local part, pos = GetTargetPart(p)
+                if part then
+                    if fkwall or VisibleCheck(part, root.Position) then
+                        local distance = (pos - root.Position).Magnitude
+                        if distance < minDist then
+                            minDist = distance
+                            target = {Player = p, Part = part, Pos = pos, Dist = distance}
+                        end
+                    end
+                end
+            end
+        end
+        
+        return target
+    end
+
+    local function GetShootableEnemies()
+        local enemyList = {}
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LP and ValidPlayer(player) and IsEnemy(player) then
+                table.insert(enemyList, player.Name)
+            end
+        end
+        
+        return enemyList
+    end
+
+    local function UpdatePlayerList()
+        if not playerDropdown then return end
+        
+        local playerList = GetShootableEnemies()
+        table.insert(playerList, 1, "ALL")
+        
+        playerDropdown:SetValues(playerList)
+    end
+
+    local function GetRandomPointNearPlayer(centerPos, radius)
+        local angle = math.random() * 2 * math.pi
+        local xOffset = math.cos(angle) * radius
+        local zOffset = math.sin(angle) * radius
+        local yOffset = (math.random() - 0.5) * radius * 0.5
+        
+        return Vector3.new(
+            centerPos.X + xOffset,
+            centerPos.Y + yOffset,
+            centerPos.Z + zOffset
+        )
+    end
+
+    local function createTrace(endPos)
+        if not ShowTrace then return end
+        
+        local myPos = HumanoidRootPart.Position
+        local startPos = GetRandomPointNearPlayer(myPos, 15)
+        
+        local direction = (endPos - startPos).Unit
+        startPos = startPos + direction * 2
+        
+        local mag = (endPos - startPos).Magnitude
+        if mag <= 0 then return end
+        
+        local P = Instance.new("Part")
+        P.Name = "ShotTrace"
+        P.Anchored = true
+        P.CanCollide = false
+        P.CastShadow = false
+        P.Material = Enum.Material.Neon
+        P.Color = Color3.fromHSV(tick() % 1, 0.8, 1)
+        P.Size = Vector3.new(0.25, 0.25, mag)
+        P.CFrame = CFrame.lookAt(startPos, endPos) * CFrame.new(0, 0, -mag/2)
+        P.Parent = Workspace
+        TS:Create(P, TweenInfo.new(0.3), {Transparency = 1, Size = Vector3.new(0, 0, mag)}):Play()
+        Debris:AddItem(P, 0.3)
+    end
+
+    local function PlayShotSound()
+        local s = Instance.new("Sound", Workspace)
+        s.SoundId = "rbxassetid://8679627751"
+        s.Volume = 0.7
+        s:Play()
+        Debris:AddItem(s, 2)
+    end
+
+    local function GetSupportedWeapon()
+        local attr = LP:GetAttribute("CurrentSkin")
+        if not attr then return nil end
+        local weaponName = string.match(attr, "^(.-)_Stock$") or attr
+        if SupportedWeapons[weaponName] then
+            return weaponName
+        end
+        return nil
+    end
+
+    local function GetWeaponInfo(weaponName)
+        if SupportedWeapons[weaponName] then
+            return SupportedWeapons[weaponName]
+        end
+        return nil
+    end
+
+    local function LookControl(isLookDown)
+        if LookRemote then
+            local value = isLookDown and -0.9454284906387329 or 0.9454284906387329
+            local args = {value, 0}
+            local success, err = pcall(function()
+                LookRemote:FireServer(unpack(args))
+            end)
+            return success
+        end
+        return false
+    end
+
+    local function startLookLoop(mode)
+        stopLookLoop()
+        
+        if mode == "none" then
+            isLookingDown = nil
+            return
+        end
+        
+        isLookingDown = mode == "lookdown"
+        lookLoopTask = task.spawn(function()
+            while isLookingDown ~= nil do
+                LookControl(isLookingDown)
+                task.wait(0.1)
+            end
+        end)
+    end
+
+    local function stopLookLoop()
+        isLookingDown = nil
+        if lookLoopTask then
+            task.cancel(lookLoopTask)
+            lookLoopTask = nil
+        end
+    end
+
+    local function GetCurrentCooldown(weaponName)
+        return WeaponCooldowns[weaponName] or 0.1
+    end
+
+    local function AutoShoot(p, part, pos)
+        if not IsSelfAlive() then return end
+        if not (Character and HumanoidRootPart) then return end
+        
+        local weaponName = GetSupportedWeapon()
+        if not weaponName then return end
+        
+        local weaponInfo = GetWeaponInfo(weaponName)
+        if not weaponInfo then return end
+        
+        local now = tick()
+        local cooldown = GetCurrentCooldown(weaponName)
+        if now - LastShot < cooldown then return end
+        
+        local myPos = HumanoidRootPart.Position
+        
+        createTrace(pos)
+        PlayShotSound()
+        
+        local args = {
+            {
+                Normal = (pos - myPos).Unit,
+                Hit = part.Parent,
+                PartName = "Head",
+                hS = weaponInfo.damage,
+                Position = pos
+            },
+            weaponInfo.weaponObject,
+            [4] = weaponInfo.param4
+        }
+        
+        local success, err = pcall(function()
+            ShootRemote:FireServer(unpack(args))
+        end)
+        
+        if success then
+            LastShot = now
+        end
+        
+        return success
+    end
+
+    local function AutoTargeting()
+        if not IsSelfAlive() then return end
+        if fkauto then
+            local target = GetTarget()
+            if target then
+                AutoShoot(target.Player, target.Part, target.Pos)
+            end
+        end
+    end
+
+    local function UpdateMyTeam()
+        local newTeam = GetTeamFromPlayer(LP)
+        if newTeam ~= MyTeam then
+            MyTeam = newTeam
+        end
+    end
+
+    task.spawn(function()
+        while true do
+            UpdateMyTeam()
+            UpdatePlayerList()
+            task.wait(0.3)
+        end
+    end)
+
+    RunService.Heartbeat:Connect(function()
+        AutoTargeting()
+    end)
+
+    local rot = 0
+    RunService.RenderStepped:Connect(function()
+        if not IsSelfAlive() then return end
+        if fk3rd then
+            LP.CameraMode = Enum.CameraMode.Classic
+            LP.CameraMaxZoomDistance = 20
+            LP.CameraMinZoomDistance = 20
+        else
+            LP.CameraMaxZoomDistance = 128
+            LP.CameraMinZoomDistance = 0.5
+        end
+        local c = LP.Character
+        if c and c:FindFirstChild("HumanoidRootPart") then
+            if fkrotate then
+                rot = rot + 0.35
+                c.HumanoidRootPart.CFrame = CFrame.new(c.HumanoidRootPart.Position) * CFrame.Angles(0, rot, 0)
+            end
+        end
+    end)
+
+    LP.CharacterAdded:Connect(function(newChar)
+        Character = newChar
+        HumanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
+        CurrentTarget = nil
+        LastShot = 0
+        UpdateMyTeam()
+        UpdatePlayerList()
+    end)
+
+    Players.PlayerAdded:Connect(function(player)
+        task.wait(0.3)
+        UpdateMyTeam()
+        UpdatePlayerList()
+    end)
+
+    Players.PlayerRemoving:Connect(function(player)
+        task.wait(0.1)
+        UpdatePlayerList()
+    end)
+
+    local Shooter = Window:Section({ Title = "防御", Opened = true })
+    local Combat = Shooter:Tab({ Title = "战斗" })
+
+    MyTeam = GetMyTeam()
+
+    local initialPlayerList = GetShootableEnemies()
+    table.insert(initialPlayerList, 1, "ALL")
+
+    playerDropdown = Combat:Dropdown({
+        Title = "目标玩家",
+        Desc = "选择目标玩家（ALL=所有敌人）",
+        Values = initialPlayerList,
+        Value = {"ALL"},
+        Multi = true,
+        AllowNone = true,
+        Callback = function(option) 
+            targetPlayers = option
+        end
+    })
+
+    Combat:Dropdown({
+        Title = "射击模式",
+        Desc = "慎用!(愤怒机器人网络会发生卡顿)",
+        Values = {"正常攻击", "愤怒机器人"},
+        Value = "正常攻击",
+        Multi = false,
+        Callback = function(value)
+            if value == "愤怒机器人" then
+                shootMode = "rage"
+                WeaponCooldowns = RageCooldowns
+            else
+                shootMode = "normal"
+                WeaponCooldowns = NormalCooldowns
+            end
+        end
+    })
+
+    Combat:Toggle({
+        Title = "自动攻击",
+        Value = false,
+        Callback = function(v)
+            fkauto = v
+        end
+    })
+
+    Combat:Toggle({
+        Title = "人物旋转",
+        Value = false,
+        Callback = function(v)
+            fkrotate = v
+        end
+    })
+
+    Combat:Toggle({
+        Title = "穿墙射击",
+        Value = false,
+        Callback = function(v)
+            fkwall = v
+        end
+    })
+
+    Combat:Toggle({
+        Title = "第三人称",
+        Value = false,
+        Callback = function(v)
+            fk3rd = v
+        end
+    })
+
+    Combat:Dropdown({
+        Title = "头部控制",
+        Desc = "选择头部动作模式",
+        Values = {"无", "低头", "抬头"},
+        Value = "无",
+        Multi = false,
+        Callback = function(value)
+            if value == "低头" then
+                lookControlMode = "lookdown"
+                startLookLoop("lookdown")
+            elseif value == "抬头" then
+                lookControlMode = "lookup"
+                startLookLoop("lookup")
+            else
+                lookControlMode = "none"
+                startLookLoop("none")
+            end
+        end
+    })
+
+end
 
 local servertable = {
 [2820580801] = { run = ohio, name = "俄亥俄州 (Ohio)" },
@@ -4963,11 +6601,13 @@ local servertable = {
 [8779464785] = { run = DJMNQ, name = "点击模拟器 (Tap Simulator)"},
 [9363735110] = { run = ETFB, name = "逃出海啸! 获得脑力! (Escape Tsunami For Brainrots)"},
 [1494262959] = { run = CR, name = "犯罪 (Criminality)"},
+[1390601379] = { run = CW, name = "战斗勇士 (CW)"},
 [8950496606] = { run = Deadly, name = "亡命速递 (Deadly Delivery)"},
 [9323860275] = { run = KSSJ, name = "快速射击 (Quick Shot)"},
 [3808081382] = { run = TSB, name = "最坚强的战场 (The Strongest Battlegrounds)"},
-[9588121608] = { run = AdP, name = "手枪竞技场 (Arena de Pistolas)"}
-
+[9588121608] = { run = AdP, name = "手枪竞技场 (Arena de Pistolas)"},
+[7018190066] = { run = DR, name = "死铁轨 (Dead Rails)" },
+[6993600665] = { run = Defusal, name = "防御 (Defusal)" }
 }
 local config = servertable[G_ID]
 if not config then
