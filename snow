@@ -5956,688 +5956,638 @@ local DR = function(config)
 end
 
 --防御
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local Debris = game:GetService("Debris")
-local TS = game:GetService("TweenService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+local Defusal = function(...)
+    secureCheck(...)
 
-local LP = Players.LocalPlayer
-local Character = LP.Character or LP.CharacterAdded:Wait()
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local Workspace = game:GetService("Workspace")
+    local Debris = game:GetService("Debris")
+    local TS = game:GetService("TweenService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local UserInputService = game:GetService("UserInputService")
 
-local CurrentTarget, LastShot = nil, 0
-local fkauto, fk3rd, fkwall, fkrotate, isLookingDown = false, false, false, false, nil
-local MyTeam = nil
-local targetPlayers = {"ALL"}
-local playerDropdown = nil
-local lookControlMode = "none"
-local shootMode = "normal"
-local lookLoopTask = nil
-local attributeConnections = {}
+    local LP = Players.LocalPlayer
+    local Character = LP.Character or LP.CharacterAdded:Wait()
+    local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
-local ShootRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("\224\182\189\224\183\128\224\182\158\224\182\169")
-local LookRemote = ReplicatedStorage:WaitForChild("RE_0R5lsPxqfSH3")
+    local CurrentTarget, LastShot = nil, 0
+    local fkauto, fk3rd, fkwall, fkrotate, isLookingDown = false, false, false, false, nil
+    local MyTeam = nil
+    local targetPlayers = {"ALL"}
+    local playerDropdown = nil
+    local lookControlMode = "none"
+    local shootMode = "normal"
+    local lookLoopTask = nil
 
-local ShowTrace = true
-local fkteam = true
-local spinSpeed = 0.35
+    local ShootRemote = ReplicatedStorage:WaitForChild("Events"):WaitForChild("\224\182\189\224\183\128\224\182\158\224\182\169")
+    local LookRemote = ReplicatedStorage:WaitForChild("RE_0R5lsPxqfSH3")
+    
+    local ShowTrace = true
+    local fkteam = true
+    local spinSpeed = 0.35
 
-local testNames = {"Team", "team", "TEAM", "TeamID", "TeamName", "Group", "Side"}
+    local testNames = {"Team", "team", "TEAM", "TeamID", "TeamName", "Group", "Side"}
 
-local NormalCooldowns = {
-    ["G-17"] = 0.1,
-    ["Deagle"] = 0.1,
-    ["AK-47"] = 0.1,
-    ["M4A1"] = 0.1,
-    ["M40"] = 0.3,
-    ["AUG"] = 0.1,
-    ["Barrett"] = 0.3,
-    ["USP"] = 0.1,
-    ["TEC-9"] = 0.05,
-    ["Vector"] = 0.05,
-    ["UMP-45"] = 0.05,
-    ["P90"] = 0.05,
-    ["DB Shotgun"] = 0.1,
-    ["M77E"] = 0.3,
-    ["MAG-7"] = 0.1
-}
-
-local RageCooldowns = {
-    ["G-17"] = 0.01,
-    ["Deagle"] = 0.01,
-    ["AK-47"] = 0.01,
-    ["M4A1"] = 0.01,
-    ["M40"] = 0.01,
-    ["AUG"] = 0.01,
-    ["Barrett"] = 0.01,
-    ["USP"] = 0.01,
-    ["TEC-9"] = 0.01,
-    ["Vector"] = 0.01,
-    ["UMP-45"] = 0.01,
-    ["P90"] = 0.01,
-    ["DB Shotgun"] = 0.01,
-    ["M77E"] = 0.01,
-    ["MAG-7"] = 0.01
-}
-
-local WeaponCooldowns = NormalCooldowns
-
-local SupportedWeapons = {
-    ["G-17"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("G-17"),
-        param4 = false
-    },
-    ["Deagle"] = {
-        damage = 3.0,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Deagle"),
-        param4 = false
-    },
-    ["AK-47"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("AK-47"),
-        param4 = true
-    },
-    ["M4A1"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M4A1"),
-        param4 = false
-    },
-    ["M40"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M40"),
-        param4 = false
-    },
-    ["AUG"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("AUG"),
-        param4 = false
-    },
-    ["Barrett"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Barrett"),
-        param4 = false
-    },
-    ["USP"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("USP"),
-        param4 = true
-    },
-    ["TEC-9"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("TEC-9"),
-        param4 = true
-    },
-    ["Vector"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Vector"),
-        param4 = false
-    },
-    ["UMP-45"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("UMP-45"),
-        param4 = true
-    },
-    ["P90"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("P90"),
-        param4 = true
-    },
-    ["DB Shotgun"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("DB Shotgun"),
-        param4 = false
-    },
-    ["M77E"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M77E"),
-        param4 = true
-    },
-    ["MAG-7"] = {
-        damage = 2.4494898319244385,
-        weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("MAG-7"),
-        param4 = true
+    local NormalCooldowns = {
+        ["G-17"] = 0.1,
+        ["Deagle"] = 0.1,
+        ["AK-47"] = 0.1,
+        ["M4A1"] = 0.1,
+        ["M40"] = 0.3,
+        ["AUG"] = 0.1,
+        ["Barrett"] = 0.3,
+        ["USP"] = 0.1,
+        ["TEC-9"] = 0.05,
+        ["Vector"] = 0.05,
+        ["UMP-45"] = 0.05,
+        ["P90"] = 0.05,
+        ["DB Shotgun"] = 0.1,
+        ["M77E"] = 0.3,
+        ["MAG-7"] = 0.1
     }
-}
 
-local function IsSelfAlive()
-    local char = LP.Character
-    if not char then return false end
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then return false end
-    if humanoid.Health <= 0 then return false end
-    local aliveAttr = LP:GetAttribute("Alive")
-    if aliveAttr ~= nil then
-        return aliveAttr
-    end
-    aliveAttr = char:GetAttribute("Alive")
-    if aliveAttr ~= nil then
-        return aliveAttr
-    end
-    return true
-end
+    local RageCooldowns = {
+        ["G-17"] = 0.01,
+        ["Deagle"] = 0.01,
+        ["AK-47"] = 0.01,
+        ["M4A1"] = 0.01,
+        ["M40"] = 0.01,
+        ["AUG"] = 0.01,
+        ["Barrett"] = 0.01,
+        ["USP"] = 0.01,
+        ["TEC-9"] = 0.01,
+        ["Vector"] = 0.01,
+        ["UMP-45"] = 0.01,
+        ["P90"] = 0.01,
+        ["DB Shotgun"] = 0.01,
+        ["M77E"] = 0.01,
+        ["MAG-7"] = 0.01
+    }
 
-local function GetTeamFromPlayer(p)
-    if not p then return nil end
-    for _, name in ipairs(testNames) do
-        local value = p:GetAttribute(name)
-        if value ~= nil then
-            return tostring(value)
+    local WeaponCooldowns = NormalCooldowns
+
+    local SupportedWeapons = {
+        ["G-17"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("G-17"),
+            param4 = false
+        },
+        ["Deagle"] = {
+            damage = 3.0,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Deagle"),
+            param4 = false
+        },
+        ["AK-47"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("AK-47"),
+            param4 = true
+        },
+        ["M4A1"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M4A1"),
+            param4 = false
+        },
+        ["M40"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M40"),
+            param4 = false
+        },
+        ["AUG"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("AUG"),
+            param4 = false
+        },
+        ["Barrett"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Barrett"),
+            param4 = false
+        },
+        ["USP"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("USP"),
+            param4 = true
+        },
+        ["TEC-9"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("TEC-9"),
+            param4 = true
+        },
+        ["Vector"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("Vector"),
+            param4 = false
+        },
+        ["UMP-45"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("UMP-45"),
+            param4 = true
+        },
+        ["P90"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("P90"),
+            param4 = true
+        },
+        ["DB Shotgun"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("DB Shotgun"),
+            param4 = false
+        },
+        ["M77E"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("M77E"),
+            param4 = true
+        },
+        ["MAG-7"] = {
+            damage = 2.4494898319244385,
+            weaponObject = ReplicatedStorage:WaitForChild("Weapons"):WaitForChild("MAG-7"),
+            param4 = true
+        }
+    }
+
+    local function IsSelfAlive()
+        local char = LP.Character
+        if not char then return false end
+        local humanoid = char:FindFirstChild("Humanoid")
+        if not humanoid then return false end
+        if humanoid.Health <= 0 then return false end
+        local aliveAttr = LP:GetAttribute("Alive")
+        if aliveAttr ~= nil then
+            return aliveAttr
         end
+        aliveAttr = char:GetAttribute("Alive")
+        if aliveAttr ~= nil then
+            return aliveAttr
+        end
+        return true
     end
-    local char = p.Character
-    if char then
+
+    local function GetTeamFromPlayer(p)
+        if not p then return nil end
         for _, name in ipairs(testNames) do
-            local value = char:GetAttribute(name)
+            local value = p:GetAttribute(name)
             if value ~= nil then
                 return tostring(value)
             end
         end
-    end
-    if p.Team ~= nil then
-        return p.Team.Name
-    end
-    return nil
-end
-
-local function GetMyTeam()
-    local attempts = 0
-    while attempts < 3 do
-        local team = GetTeamFromPlayer(LP)
-        if team then
-            return team
+        local char = p.Character
+        if char then
+            for _, name in ipairs(testNames) do
+                local value = char:GetAttribute(name)
+                if value ~= nil then
+                    return tostring(value)
+                end
+            end
         end
-        attempts = attempts + 1
-        task.wait(0.3)
+        if p.Team ~= nil then
+            return p.Team.Name
+        end
+        return nil
     end
-    return nil
-end
 
-local function IsEnemy(p)
-    if p == LP then
-        return false
+    local function GetMyTeam()
+        local attempts = 0
+        while attempts < 3 do
+            local team = GetTeamFromPlayer(LP)
+            if team then
+                return team
+            end
+            attempts = attempts + 1
+            task.wait(0.3)
+        end
+        return nil
     end
-    if not fkteam then
-        return true
-    end
-    if not MyTeam then
-        return false
-    end
-    local pTeam = GetTeamFromPlayer(p)
-    if not pTeam then
-        return false
-    end
-    return pTeam ~= MyTeam
-end
 
-local function IsTargetPlayer(p)
-    if targetPlayers[1] == "ALL" then
-        return true
-    end
-    
-    for _, targetName in ipairs(targetPlayers) do
-        if p.Name == targetName then
+    local function IsEnemy(p)
+        if p == LP then
+            return false
+        end
+        if not fkteam then
             return true
         end
+        if not MyTeam then
+            return false
+        end
+        local pTeam = GetTeamFromPlayer(p)
+        if not pTeam then
+            return false
+        end
+        return pTeam ~= MyTeam
     end
-    
-    return false
-end
 
-local function IsPlayerAlive(p)
-    local alive = p:GetAttribute("Alive")
-    if alive ~= nil then
-        return alive
+    local function IsTargetPlayer(p)
+        if targetPlayers[1] == "ALL" then
+            return true
+        end
+        
+        for _, targetName in ipairs(targetPlayers) do
+            if p.Name == targetName then
+                return true
+            end
+        end
+        
+        return false
     end
-    local char = p.Character
-    if char then
-        alive = char:GetAttribute("Alive")
+
+    local function IsPlayerAlive(p)
+        local alive = p:GetAttribute("Alive")
         if alive ~= nil then
             return alive
         end
-    end
-    return true
-end
-
-local function ValidPlayer(p)
-    local c = p.Character
-    if not c then return false end
-    if not c:FindFirstChild("Humanoid") then return false end
-    if c.Humanoid.Health <= 0 then return false end
-    if not IsPlayerAlive(p) then return false end
-    return true
-end
-
-local function GetTargetPart(p)
-    local c = p.Character
-    if not c then return nil end
-    local head = c:FindFirstChild("Head")
-    if head then return head, head.Position end
-    local root = c:FindFirstChild("HumanoidRootPart")
-    if root then return root, root.Position end
-    return nil
-end
-
-local function VisibleCheck(part, origin)
-    if fkwall then
+        local char = p.Character
+        if char then
+            alive = char:GetAttribute("Alive")
+            if alive ~= nil then
+                return alive
+            end
+        end
         return true
     end
-    if not (part and origin) then return false end
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.FilterDescendantsInstances = { Character, part.Parent }
-    local r = Workspace:Raycast(origin, part.Position - origin, params)
-    return not r or r.Instance:IsDescendantOf(part.Parent)
-end
 
-local function GetTarget()
-    if not IsSelfAlive() then return nil end
-    
-    local root = HumanoidRootPart
-    if not root then return nil end
-    local target = nil
-    local minDist = math.huge
-    
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LP and ValidPlayer(p) and IsEnemy(p) and IsTargetPlayer(p) then
-            local part, pos = GetTargetPart(p)
-            if part then
-                if fkwall or VisibleCheck(part, root.Position) then
-                    local distance = (pos - root.Position).Magnitude
-                    if distance < minDist then
-                        minDist = distance
-                        target = {Player = p, Part = part, Pos = pos, Dist = distance}
+    local function ValidPlayer(p)
+        local c = p.Character
+        if not c then return false end
+        if not c:FindFirstChild("Humanoid") then return false end
+        if c.Humanoid.Health <= 0 then return false end
+        if not IsPlayerAlive(p) then return false end
+        return true
+    end
+
+    local function GetTargetPart(p)
+        local c = p.Character
+        if not c then return nil end
+        local head = c:FindFirstChild("Head")
+        if head then return head, head.Position end
+        local root = c:FindFirstChild("HumanoidRootPart")
+        if root then return root, root.Position end
+        return nil
+    end
+
+    local function VisibleCheck(part, origin)
+        if fkwall then
+            return true
+        end
+        if not (part and origin) then return false end
+        local params = RaycastParams.new()
+        params.FilterType = Enum.RaycastFilterType.Blacklist
+        params.FilterDescendantsInstances = { Character, part.Parent }
+        local r = Workspace:Raycast(origin, part.Position - origin, params)
+        return not r or r.Instance:IsDescendantOf(part.Parent)
+    end
+
+    local function GetTarget()
+        if not IsSelfAlive() then return nil end
+        
+        local root = HumanoidRootPart
+        if not root then return nil end
+        local target = nil
+        local minDist = math.huge
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP and ValidPlayer(p) and IsEnemy(p) and IsTargetPlayer(p) then
+                local part, pos = GetTargetPart(p)
+                if part then
+                    if fkwall or VisibleCheck(part, root.Position) then
+                        local distance = (pos - root.Position).Magnitude
+                        if distance < minDist then
+                            minDist = distance
+                            target = {Player = p, Part = part, Pos = pos, Dist = distance}
+                        end
                     end
                 end
             end
         end
+        
+        return target
     end
-    
-    return target
-end
 
-local function GetShootableEnemies()
-    local enemyList = {}
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LP and ValidPlayer(player) and IsEnemy(player) then
-            table.insert(enemyList, player.Name)
-        end
-    end
-    
-    return enemyList
-end
-
-local function UpdatePlayerList()
-    if not playerDropdown then return end
-    
-    local playerList = GetShootableEnemies()
-    table.insert(playerList, 1, "ALL")
-    
-    playerDropdown:SetValues(playerList)
-end
-
-local function GetRandomPointNearPlayer(centerPos, radius)
-    local angle = math.random() * 2 * math.pi
-    local xOffset = math.cos(angle) * radius
-    local zOffset = math.sin(angle) * radius
-    local yOffset = (math.random() - 0.5) * radius * 0.5
-    
-    return Vector3.new(
-        centerPos.X + xOffset,
-        centerPos.Y + yOffset,
-        centerPos.Z + zOffset
-    )
-end
-
-local function createTrace(endPos)
-    if not ShowTrace then return end
-    
-    local myPos = HumanoidRootPart.Position
-    local startPos = GetRandomPointNearPlayer(myPos, 15)
-    
-    local direction = (endPos - startPos).Unit
-    startPos = startPos + direction * 2
-    
-    local mag = (endPos - startPos).Magnitude
-    if mag <= 0 then return end
-    
-    local P = Instance.new("Part")
-    P.Name = "ShotTrace"
-    P.Anchored = true
-    P.CanCollide = false
-    P.CastShadow = false
-    P.Material = Enum.Material.Neon
-    P.Color = Color3.fromHSV(tick() % 1, 0.8, 1)
-    P.Size = Vector3.new(0.25, 0.25, mag)
-    P.CFrame = CFrame.lookAt(startPos, endPos) * CFrame.new(0, 0, -mag/2)
-    P.Parent = Workspace
-    TS:Create(P, TweenInfo.new(0.3), {Transparency = 1, Size = Vector3.new(0, 0, mag)}):Play()
-    Debris:AddItem(P, 0.3)
-end
-
-local function PlayShotSound()
-    local s = Instance.new("Sound", Workspace)
-    s.SoundId = "rbxassetid://8679627751"
-    s.Volume = 0.7
-    s:Play()
-    Debris:AddItem(s, 2)
-end
-
-local function GetSupportedWeapon()
-    local attr = LP:GetAttribute("CurrentSkin")
-    if not attr then return nil end
-    local weaponName = string.match(attr, "^(.-)_Stock$") or attr
-    if SupportedWeapons[weaponName] then
-        return weaponName
-    end
-    return nil
-end
-
-local function GetWeaponInfo(weaponName)
-    if SupportedWeapons[weaponName] then
-        return SupportedWeapons[weaponName]
-    end
-    return nil
-end
-
-local function LookControl(isLookDown)
-    if LookRemote then
-        local value = isLookDown and -0.9454284906387329 or 0.9454284906387329
-        local args = {value, 0}
-        local success, err = pcall(function()
-            LookRemote:FireServer(unpack(args))
-        end)
-        return success
-    end
-    return false
-end
-
-local function startLookLoop(mode)
-    stopLookLoop()
-    
-    if mode == "none" then
-        isLookingDown = nil
-        return
-    end
-    
-    isLookingDown = mode == "lookdown"
-    lookLoopTask = task.spawn(function()
-        while isLookingDown ~= nil do
-            LookControl(isLookingDown)
-            task.wait(0.1)
-        end
-    end)
-end
-
-local function stopLookLoop()
-    isLookingDown = nil
-    if lookLoopTask then
-        task.cancel(lookLoopTask)
-        lookLoopTask = nil
-    end
-end
-
-local function GetCurrentCooldown(weaponName)
-    return WeaponCooldowns[weaponName] or 0.1
-end
-
-local function AutoShoot(p, part, pos)
-    if not IsSelfAlive() then return end
-    if not (Character and HumanoidRootPart) then return end
-    
-    if not IsEnemy(p) then return end
-    
-    local weaponName = GetSupportedWeapon()
-    if not weaponName then return end
-    
-    local weaponInfo = GetWeaponInfo(weaponName)
-    if not weaponInfo then return end
-    
-    local now = tick()
-    local cooldown = GetCurrentCooldown(weaponName)
-    if now - LastShot < cooldown then return end
-    
-    local myPos = HumanoidRootPart.Position
-    
-    createTrace(pos)
-    PlayShotSound()
-    
-    local args = {
-        {
-            Normal = (pos - myPos).Unit,
-            Hit = part.Parent,
-            PartName = "Head",
-            hS = weaponInfo.damage,
-            Position = pos
-        },
-        weaponInfo.weaponObject,
-        [4] = weaponInfo.param4
-    }
-    
-    local success, err = pcall(function()
-        ShootRemote:FireServer(unpack(args))
-    end)
-    
-    if success then
-        LastShot = now
-    end
-    
-    return success
-end
-
-local function AutoTargeting()
-    if not IsSelfAlive() then return end
-    if fkauto then
-        local target = GetTarget()
-        if target then
-            AutoShoot(target.Player, target.Part, target.Pos)
-        end
-    end
-end
-
-local function UpdateMyTeam()
-    local newTeam = GetTeamFromPlayer(LP)
-    if newTeam ~= MyTeam then
-        MyTeam = newTeam
-    end
-end
-
-local function SetupPlayerAttributeMonitor(player)
-    if player == LP then return end
-    
-    if attributeConnections[player] then
-        attributeConnections[player]:Disconnect()
-    end
-    
-    attributeConnections[player] = player:GetAttributeChangedSignal("Alive"):Connect(function()
-        UpdatePlayerList()
-    end)
-    
-    if player.Character then
-        if attributeConnections[player.."Char"] then
-            attributeConnections[player.."Char"]:Disconnect()
+    local function GetShootableEnemies()
+        local enemyList = {}
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LP and ValidPlayer(player) and IsEnemy(player) then
+                table.insert(enemyList, player.Name)
+            end
         end
         
-        attributeConnections[player.."Char"] = player.Character:GetAttributeChangedSignal("Alive"):Connect(function()
-            UpdatePlayerList()
+        return enemyList
+    end
+
+    local function UpdatePlayerList()
+        if not playerDropdown then return end
+        
+        local playerList = GetShootableEnemies()
+        table.insert(playerList, 1, "ALL")
+        
+        playerDropdown:SetValues(playerList)
+    end
+
+    local function GetRandomPointNearPlayer(centerPos, radius)
+        local angle = math.random() * 2 * math.pi
+        local xOffset = math.cos(angle) * radius
+        local zOffset = math.sin(angle) * radius
+        local yOffset = (math.random() - 0.5) * radius * 0.5
+        
+        return Vector3.new(
+            centerPos.X + xOffset,
+            centerPos.Y + yOffset,
+            centerPos.Z + zOffset
+        )
+    end
+
+    local function createTrace(endPos)
+        if not ShowTrace then return end
+        
+        local myPos = HumanoidRootPart.Position
+        local startPos = GetRandomPointNearPlayer(myPos, 15)
+        
+        local direction = (endPos - startPos).Unit
+        startPos = startPos + direction * 2
+        
+        local mag = (endPos - startPos).Magnitude
+        if mag <= 0 then return end
+        
+        local P = Instance.new("Part")
+        P.Name = "ShotTrace"
+        P.Anchored = true
+        P.CanCollide = false
+        P.CastShadow = false
+        P.Material = Enum.Material.Neon
+        P.Color = Color3.fromHSV(tick() % 1, 0.8, 1)
+        P.Size = Vector3.new(0.25, 0.25, mag)
+        P.CFrame = CFrame.lookAt(startPos, endPos) * CFrame.new(0, 0, -mag/2)
+        P.Parent = Workspace
+        TS:Create(P, TweenInfo.new(0.3), {Transparency = 1, Size = Vector3.new(0, 0, mag)}):Play()
+        Debris:AddItem(P, 0.3)
+    end
+
+    local function PlayShotSound()
+        local s = Instance.new("Sound", Workspace)
+        s.SoundId = "rbxassetid://8679627751"
+        s.Volume = 0.7
+        s:Play()
+        Debris:AddItem(s, 2)
+    end
+
+    local function GetSupportedWeapon()
+        local attr = LP:GetAttribute("CurrentSkin")
+        if not attr then return nil end
+        local weaponName = string.match(attr, "^(.-)_Stock$") or attr
+        if SupportedWeapons[weaponName] then
+            return weaponName
+        end
+        return nil
+    end
+
+    local function GetWeaponInfo(weaponName)
+        if SupportedWeapons[weaponName] then
+            return SupportedWeapons[weaponName]
+        end
+        return nil
+    end
+
+    local function LookControl(isLookDown)
+        if LookRemote then
+            local value = isLookDown and -0.9454284906387329 or 0.9454284906387329
+            local args = {value, 0}
+            local success, err = pcall(function()
+                LookRemote:FireServer(unpack(args))
+            end)
+            return success
+        end
+        return false
+    end
+
+    local function startLookLoop(mode)
+        stopLookLoop()
+        
+        if mode == "none" then
+            isLookingDown = nil
+            return
+        end
+        
+        isLookingDown = mode == "lookdown"
+        lookLoopTask = task.spawn(function()
+            while isLookingDown ~= nil do
+                LookControl(isLookingDown)
+                task.wait(0.1)
+            end
         end)
     end
-end
 
-local function CleanupPlayerMonitors()
-    for name, connection in pairs(attributeConnections) do
-        connection:Disconnect()
+    local function stopLookLoop()
+        isLookingDown = nil
+        if lookLoopTask then
+            task.cancel(lookLoopTask)
+            lookLoopTask = nil
+        end
     end
-    attributeConnections = {}
-end
 
-local function SetupAllPlayerMonitors()
-    for _, player in pairs(Players:GetPlayers()) do
-        SetupPlayerAttributeMonitor(player)
+    local function GetCurrentCooldown(weaponName)
+        return WeaponCooldowns[weaponName] or 0.1
     end
-end
 
-task.spawn(function()
-    while true do
+    local function AutoShoot(p, part, pos)
+        if not IsSelfAlive() then return end
+        if not (Character and HumanoidRootPart) then return end
+        
+        local weaponName = GetSupportedWeapon()
+        if not weaponName then return end
+        
+        local weaponInfo = GetWeaponInfo(weaponName)
+        if not weaponInfo then return end
+        
+        local now = tick()
+        local cooldown = GetCurrentCooldown(weaponName)
+        if now - LastShot < cooldown then return end
+        
+        local myPos = HumanoidRootPart.Position
+        
+        createTrace(pos)
+        PlayShotSound()
+        
+        local args = {
+            {
+                Normal = (pos - myPos).Unit,
+                Hit = part.Parent,
+                PartName = "Head",
+                hS = weaponInfo.damage,
+                Position = pos
+            },
+            weaponInfo.weaponObject,
+            [4] = weaponInfo.param4
+        }
+        
+        local success, err = pcall(function()
+            ShootRemote:FireServer(unpack(args))
+        end)
+        
+        if success then
+            LastShot = now
+        end
+        
+        return success
+    end
+
+    local function AutoTargeting()
+        if not IsSelfAlive() then return end
+        if fkauto then
+            local target = GetTarget()
+            if target then
+                AutoShoot(target.Player, target.Part, target.Pos)
+            end
+        end
+    end
+
+    local function UpdateMyTeam()
+        local newTeam = GetTeamFromPlayer(LP)
+        if newTeam ~= MyTeam then
+            MyTeam = newTeam
+        end
+    end
+
+    task.spawn(function()
+        while true do
+            UpdateMyTeam()
+            UpdatePlayerList()
+            task.wait(0.3)
+        end
+    end)
+
+    RunService.Heartbeat:Connect(function()
+        AutoTargeting()
+    end)
+
+    local rot = 0
+    RunService.RenderStepped:Connect(function()
+        if not IsSelfAlive() then return end
+        if fk3rd then
+            LP.CameraMode = Enum.CameraMode.Classic
+            LP.CameraMaxZoomDistance = 20
+            LP.CameraMinZoomDistance = 20
+        else
+            LP.CameraMaxZoomDistance = 128
+            LP.CameraMinZoomDistance = 0.5
+        end
+        local c = LP.Character
+        if c and c:FindFirstChild("HumanoidRootPart") then
+            if fkrotate then
+                rot = rot + 0.35
+                c.HumanoidRootPart.CFrame = CFrame.new(c.HumanoidRootPart.Position) * CFrame.Angles(0, rot, 0)
+            end
+        end
+    end)
+
+    LP.CharacterAdded:Connect(function(newChar)
+        Character = newChar
+        HumanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
+        CurrentTarget = nil
+        LastShot = 0
         UpdateMyTeam()
         UpdatePlayerList()
-        task.wait(0.1)
-    end
-end)
+    end)
 
-RunService.Heartbeat:Connect(function()
-    AutoTargeting()
-end)
-
-local rot = 0
-RunService.RenderStepped:Connect(function()
-    if not IsSelfAlive() then return end
-    if fk3rd then
-        LP.CameraMode = Enum.CameraMode.Classic
-        LP.CameraMaxZoomDistance = 20
-        LP.CameraMinZoomDistance = 20
-    else
-        LP.CameraMaxZoomDistance = 128
-        LP.CameraMinZoomDistance = 0.5
-    end
-    local c = LP.Character
-    if c and c:FindFirstChild("HumanoidRootPart") then
-        if fkrotate then
-            rot = rot + 0.35
-            c.HumanoidRootPart.CFrame = CFrame.new(c.HumanoidRootPart.Position) * CFrame.Angles(0, rot, 0)
-        end
-    end
-end)
-
-LP.CharacterAdded:Connect(function(newChar)
-    Character = newChar
-    HumanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
-    CurrentTarget = nil
-    LastShot = 0
-    UpdateMyTeam()
-    UpdatePlayerList()
-end)
-
-Players.PlayerAdded:Connect(function(player)
-    task.wait(0.1)
-    UpdateMyTeam()
-    UpdatePlayerList()
-    SetupPlayerAttributeMonitor(player)
-    
-    player.CharacterAdded:Connect(function()
-        task.wait(0.2)
-        SetupPlayerAttributeMonitor(player)
+    Players.PlayerAdded:Connect(function(player)
+        task.wait(0.3)
+        UpdateMyTeam()
         UpdatePlayerList()
     end)
-end)
 
-Players.PlayerRemoving:Connect(function(player)
-    task.wait(0.1)
-    UpdatePlayerList()
-    if attributeConnections[player] then
-        attributeConnections[player]:Disconnect()
-        attributeConnections[player] = nil
-    end
-    if attributeConnections[player.."Char"] then
-        attributeConnections[player.."Char"]:Disconnect()
-        attributeConnections[player.."Char"] = nil
-    end
-end)
+    Players.PlayerRemoving:Connect(function(player)
+        task.wait(0.1)
+        UpdatePlayerList()
+    end)
 
-SetupAllPlayerMonitors()
+    local Shooter = Window:Section({ Title = "防御", Opened = true })
+    local Combat = Shooter:Tab({ Title = "战斗" })
 
-local Shooter = Window:Section({ Title = "防御", Opened = true })
-local Combat = Shooter:Tab({ Title = "战斗" })
+    MyTeam = GetMyTeam()
 
-MyTeam = GetMyTeam()
+    local initialPlayerList = GetShootableEnemies()
+    table.insert(initialPlayerList, 1, "ALL")
 
-local initialPlayerList = GetShootableEnemies()
-table.insert(initialPlayerList, 1, "ALL")
-
-playerDropdown = Combat:Dropdown({
-    Title = "目标玩家",
-    Desc = "选择目标玩家（ALL=所有敌人）",
-    Values = initialPlayerList,
-    Value = {"ALL"},
-    Multi = true,
-    AllowNone = true,
-    Callback = function(option) 
-        targetPlayers = option
-    end
-})
-
-Combat:Dropdown({
-    Title = "射击模式",
-    Desc = "慎用!(愤怒机器人网络会发生卡顿)",
-    Values = {"正常攻击", "愤怒机器人"},
-    Value = "正常攻击",
-    Multi = false,
-    Callback = function(value)
-        if value == "愤怒机器人" then
-            shootMode = "rage"
-            WeaponCooldowns = RageCooldowns
-        else
-            shootMode = "normal"
-            WeaponCooldowns = NormalCooldowns
+    playerDropdown = Combat:Dropdown({
+        Title = "目标玩家",
+        Desc = "选择目标玩家（ALL=所有敌人）",
+        Values = initialPlayerList,
+        Value = {"ALL"},
+        Multi = true,
+        AllowNone = true,
+        Callback = function(option) 
+            targetPlayers = option
         end
-    end
-})
+    })
 
-Combat:Toggle({
-    Title = "自动攻击",
-    Value = false,
-    Callback = function(v)
-        fkauto = v
-    end
-})
-
-Combat:Toggle({
-    Title = "人物旋转",
-    Value = false,
-    Callback = function(v)
-        fkrotate = v
-    end
-})
-
-Combat:Toggle({
-    Title = "穿墙射击",
-    Value = false,
-    Callback = function(v)
-        fkwall = v
-    end
-})
-
-Combat:Toggle({
-    Title = "第三人称",
-    Value = false,
-    Callback = function(v)
-        fk3rd = v
-    end
-})
-
-Combat:Dropdown({
-    Title = "头部控制",
-    Desc = "选择头部动作模式",
-    Values = {"无", "低头", "抬头"},
-    Value = "无",
-    Multi = false,
-    Callback = function(value)
-        if value == "低头" then
-            lookControlMode = "lookdown"
-            startLookLoop("lookdown")
-        elseif value == "抬头" then
-            lookControlMode = "lookup"
-            startLookLoop("lookup")
-        else
-            lookControlMode = "none"
-            startLookLoop("none")
+    Combat:Dropdown({
+        Title = "射击模式",
+        Desc = "慎用!(愤怒机器人网络会发生卡顿)",
+        Values = {"正常攻击", "愤怒机器人"},
+        Value = "正常攻击",
+        Multi = false,
+        Callback = function(value)
+            if value == "愤怒机器人" then
+                shootMode = "rage"
+                WeaponCooldowns = RageCooldowns
+            else
+                shootMode = "normal"
+                WeaponCooldowns = NormalCooldowns
+            end
         end
-    end
-})
+    })
+
+    Combat:Toggle({
+        Title = "自动攻击",
+        Value = false,
+        Callback = function(v)
+            fkauto = v
+        end
+    })
+
+    Combat:Toggle({
+        Title = "人物旋转",
+        Value = false,
+        Callback = function(v)
+            fkrotate = v
+        end
+    })
+
+    Combat:Toggle({
+        Title = "穿墙射击",
+        Value = false,
+        Callback = function(v)
+            fkwall = v
+        end
+    })
+
+    Combat:Toggle({
+        Title = "第三人称",
+        Value = false,
+        Callback = function(v)
+            fk3rd = v
+        end
+    })
+
+    Combat:Dropdown({
+        Title = "头部控制",
+        Desc = "选择头部动作模式",
+        Values = {"无", "低头", "抬头"},
+        Value = "无",
+        Multi = false,
+        Callback = function(value)
+            if value == "低头" then
+                lookControlMode = "lookdown"
+                startLookLoop("lookdown")
+            elseif value == "抬头" then
+                lookControlMode = "lookup"
+                startLookLoop("lookup")
+            else
+                lookControlMode = "none"
+                startLookLoop("none")
+            end
+        end
+    })
+
+end
 
 local servertable = {
 [2820580801] = { run = ohio, name = "俄亥俄州 (Ohio)" },
