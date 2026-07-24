@@ -1,5 +1,5 @@
 -- TX Bond 自启 Loader（外链版）
-local url = "https://gist.githubusercontent.com/你的用户名/你的GistID/raw/你的文件名/tx_bond.lua" -- ← 替换成你的真实URL
+local url = "https://raw.githubusercontent.com/qewwwwwww/666/main/%E5%88%B7%E5%80%BA%E5%88%B8.lua" -- ← 替换成你的真实URL
 
 -- 立即执行一次主脚本
 pcall(function()
