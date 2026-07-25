@@ -1,43 +1,10 @@
--- TX Bond 自启 Loader（外链版）
-local url = "https://raw.githubusercontent.com/qewwwwwww/666/main/%E5%88%B7%E5%80%BA%E5%88%B8.lua" -- ← 替换成你的真实URL
+local selfUrl = "https://raw.githubusercontent.com/qewwwwwww/666/main/%E8%87%AA%E5%90%AF%E5%8A%A8.lua"
+local cmd = "loadstring(game:HttpGet('" .. selfUrl .. "'))()"
 
--- 立即执行一次主脚本
-pcall(function()
-    loadstring(game:HttpGet(url))()
-end)
+pcall(function() if syn and syn.queue_on_teleport then syn.queue_on_teleport(cmd) end end)
+pcall(function() if queue_on_teleport then queue_on_teleport(cmd) end end)
+pcall(function() if KRNL and KRNL.queue_on_teleport then KRNL.queue_on_teleport(cmd) end end)
+pcall(function() if fluxus and fluxus.queue_on_teleport then fluxus.queue_on_teleport(cmd) end end)
 
--- 注册传送后自动执行（全注入器适配）
-local function registerAutoExecute()
-    local success = false
-    pcall(function()
-        if syn and syn.queue_on_teleport then
-            syn.queue_on_teleport("loadstring(game:HttpGet('" .. url .. "'))()")
-            success = true
-        end
-    end)
-    pcall(function()
-        if queue_on_teleport then
-            queue_on_teleport("loadstring(game:HttpGet('" .. url .. "'))()")
-            success = true
-        end
-    end)
-    pcall(function()
-        if KRNL and KRNL.queue_on_teleport then
-            KRNL.queue_on_teleport("loadstring(game:HttpGet('" .. url .. "'))()")
-            success = true
-        end
-    end)
-    pcall(function()
-        if fluxus and fluxus.queue_on_teleport then
-            fluxus.queue_on_teleport("loadstring(game:HttpGet('" .. url .. "'))()")
-            success = true
-        end
-    end)
-    if not success then
-        warn("⚠️ 未检测到支持的注入器，但仍会尝试运行主脚本")
-    end
-end
-
-registerAutoExecute()
-
-print("✅ TX Bond 自启加载器已初始化！现在你可以随意传送服务器，脚本会自动跟随。")
+-- 首次也顺手跑主脚本（主脚本链写在 loader 里）
+loadstring(game:HttpGet("https://raw.githubusercontent.com/qewwwwwww/666/main/%E5%88%B7%E5%80%BA%E5%88%B8.lua"))()
