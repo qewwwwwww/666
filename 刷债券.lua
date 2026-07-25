@@ -46,14 +46,14 @@ if not character then return false end
 local hrp=character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
 if not hrp then return false end
 hrp.CFrame=CFrame.new(targetPos)
-task.wait(0.75)
+task.wait(0.78)
 local dist=(hrp.Position-targetPos).Magnitude
-return dist<38 end
+return dist<40 end
 local function createPublicRoomTwice()
 local CreateParty=RS.Shared.Universe.Network.RemoteEvent:FindFirstChild("CreateParty")
 if not CreateParty then return false end
 CreateParty:FireServer({isPrivate=false,maxMembers=1,trainId="default",gameMode="Normal"})
-task.wait(1.02)
+task.wait(1.04)
 CreateParty:FireServer({isPrivate=false,maxMembers=1,trainId="default",gameMode="Normal"})
 return true end
 local function attemptStartGame(zones)
@@ -67,15 +67,15 @@ local teleportSuccess=teleportToZone(targetZone)
 if not teleportSuccess then task.wait(2) continue end
 local waitStart=tick()
 local arrived=false
-while tick()-waitStart<14 do
-task.wait(0.48)
+while tick()-waitStart<15 do
+task.wait(0.46)
 arrived=isInZone(targetZone)
 if arrived then break end end
 if not arrived then task.wait(2) continue end
 createPublicRoomTwice()
 local gameCreated=false
-for i=1,50 do
-task.wait(0.408)
+for i=1,55 do
+task.wait(0.41)
 if isGameZoneExists() then gameCreated=true break end end
 if gameCreated then return true end
 task.wait(1) end end
@@ -89,10 +89,10 @@ local function startEndDecisionLoop()
 local EndDecision=RS.Remotes:FindFirstChild("EndDecision")
 if not EndDecision then return false end
 killSelf()
-task.wait(0.66)
+task.wait(0.67)
 while true do
 pcall(function() EndDecision:FireServer(false) end)
-task.wait(0.245) end end
+task.wait(0.248) end end
 local function isDuplicate(id,foundList)
 for _,v in ipairs(foundList) do if v==id then return true end end
 return false end
@@ -105,9 +105,9 @@ local char=world:get_resource(comps.ClientStateResource).localCharacter
 if char then
 if not world:has(char,Sack) then
 world:add(char,Sack)
-world:set(char,Sack,{contents={},maxContents=99500}) end
-for id=1,26000,1580 do
-local batchEnd=math.min(id+1579,28000)
+world:set(char,Sack,{contents={},maxContents=99800}) end
+for id=1,26500,1600 do
+local batchEnd=math.min(id+1599,29000)
 for j=id,batchEnd do
 if world:has(j,Storable) and world:get(j,ObjectId)=="bond" then
 local sr=replicator:get_server_entity(j)
@@ -123,36 +123,36 @@ local j=bondData.id
 local sr=bondData.serverEntity
 StoreRemote:FireServer(sr)
 baggedCount=baggedCount+1
-task.wait(0.078)
+task.wait(0.080)
 StoreRemote:FireServer()
 ActionableEvent:FireServer(sr)
 collectedCount=collectedCount+1
-task.wait(0.076) end
+task.wait(0.078) end
 return baggedCount,collectedCount end
 local function startFarmingBonds()
 if Workspace:FindFirstChild("PartyZones") then return false end
 local world,comps,replicator,Remotes,Event
 local loadSuccess=false
 local retryCount=0
-while not loadSuccess and retryCount<6500 do
+while not loadSuccess and retryCount<7000 do
 loadSuccess=pcall(function()
 world=require(RS.Shared.Universe.ECS.world)
 comps=require(RS.Shared.Universe.ECS.components)
 replicator=require(RS.Client.Universe.Replication.clientReplicator)
 Remotes=require(RS.Shared.Universe.Remotes)
 Event=RS.Shared.Universe.Network.RemoteEvent.Actionable end)
-if not loadSuccess then retryCount=retryCount+1 task.wait(0.496) end
+if not loadSuccess then retryCount=retryCount+1 task.wait(0.497) end
 if Workspace:FindFirstChild("PartyZones") then return false end end
 if not loadSuccess then return false end
 local ClientStateResource=comps.ClientStateResource
-local maxInitRetries=1300
+local maxInitRetries=1400
 local initRetry=0
 local initSuccess=false
 while not initSuccess and initRetry<maxInitRetries do
 initRetry=initRetry+1
 local ok,res=pcall(function() return world:get_resource(ClientStateResource) end)
 if ok and res then initSuccess=true break end
-task.wait(0.502)
+task.wait(0.505)
 if Workspace:FindFirstChild("PartyZones") then return false end end
 if not initSuccess then return false end
 local Storable=comps.Storable
@@ -163,13 +163,13 @@ local ActionableEvent=Event
 local startTime=tick()
 local scanFound=false
 local allBondList={}
-while tick()-startTime<18 do
+while tick()-startTime<20 do
 if Workspace:FindFirstChild("PartyZones") then return false end
 local newBonds=scanForBonds(world,comps,replicator)
 for _,bond in ipairs(newBonds) do
 if not isDuplicate(bond.id,allBondList) then allBondList[#allBondList+1]=bond end end
 if #allBondList>0 then scanFound=true break end
-task.wait(0.265) end
+task.wait(0.268) end
 if not scanFound then
 CoreGui:SetCore("SendNotification",{Title="TX Script",Text="未发现债券，自杀循环",Duration=5})
 return true end
@@ -214,3 +214,19 @@ local startSuccess=attemptStartGame(zones)
 if startSuccess then
 local needSuicide=startFarmingBonds()
 if needSuicide then task.wait(1) startEndDecisionLoop() end end end
+
+-- === 自动执行注册（主脚本自带）===
+local url = "https://raw.githubusercontent.com/qewwwwwww/666/main/%E5%88%B7%E5%80%BA%E5%88%B8.lua"
+local function setupAutoExecute()
+    local conn
+    conn = game.OnTeleport:Connect(function(state)
+        if state == Enum.TeleportState.Started then
+            conn:Disconnect()
+            task.spawn(setupAutoExecute)
+            pcall(function()
+                loadstring(game:HttpGet(url))()
+            end)
+        end
+    end)
+end
+setupAutoExecute()
