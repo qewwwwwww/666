@@ -6,7 +6,21 @@ local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
+local TS = game:GetService("TeleportService")
+local DEAD_RAILS_PLACE_ID = 116495829188952
+
 CoreGui:SetCore("SendNotification",{Title="TX Script",Text="刷债券V25.0",Duration=5})
+
+local function forceJoinDeadRails()
+    pcall(function()
+        player:Kick("正在传送至死亡轨道，如果卡在这就去注入器设置把Verify Teleports关闭")
+    end)
+    task.wait(0.3)
+    pcall(function()
+        TS:Teleport(DEAD_RAILS_PLACE_ID, player)
+    end)
+end
+
 local function isZoneOccupied(zone)
 if not zone then return true end
 local primaryPart=zone.PrimaryPart or zone:FindFirstChildWhichIsA("BasePart")
@@ -37,7 +51,7 @@ local partCount=0
 for _,obj in ipairs(Workspace:GetDescendants()) do
 if obj:IsA("BasePart") then
 partCount=partCount+1
-if partCount>90 then return true end end end
+if partCount>94 then return true end end end
 return false end
 local function teleportToZone(zone)
 if not zone then return false end
@@ -49,14 +63,14 @@ if not character then return false end
 local hrp=character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
 if not hrp then return false end
 hrp.CFrame=CFrame.new(targetPos)
-task.wait(0.82)
+task.wait(0.835)
 local dist=(hrp.Position-targetPos).Magnitude
-return dist<42 end
+return dist<44 end
 local function createPublicRoomTwice()
 local CreateParty=RS.Shared.Universe.Network.RemoteEvent:FindFirstChild("CreateParty")
 if not CreateParty then return false end
 CreateParty:FireServer({isPrivate=false,maxMembers=1,trainId="default",gameMode="Normal"})
-task.wait(1.06)
+task.wait(1.068)
 CreateParty:FireServer({isPrivate=false,maxMembers=1,trainId="default",gameMode="Normal"})
 return true end
 local function attemptStartGame(zones)
@@ -70,15 +84,15 @@ local teleportSuccess=teleportToZone(targetZone)
 if not teleportSuccess then task.wait(2) continue end
 local waitStart=tick()
 local arrived=false
-while tick()-waitStart<16 do
-task.wait(0.465)
+while tick()-waitStart<17 do
+task.wait(0.469)
 arrived=isInZone(targetZone)
 if arrived then break end end
 if not arrived then task.wait(2) continue end
 createPublicRoomTwice()
 local gameCreated=false
-for i=1,60 do
-task.wait(0.412)
+for i=1,63 do
+task.wait(0.415)
 if isGameZoneExists() then gameCreated=true break end end
 if gameCreated then return true end
 task.wait(1) end end
@@ -92,10 +106,10 @@ local function startEndDecisionLoop()
 local EndDecision=RS.Remotes:FindFirstChild("EndDecision")
 if not EndDecision then return false end
 killSelf()
-task.wait(0.678)
+task.wait(0.688)
 while true do
 pcall(function() EndDecision:FireServer(false) end)
-task.wait(0.250) end end
+task.wait(0.262) end end
 local function isDuplicate(id,foundList)
 for _,v in ipairs(foundList) do if v==id then return true end end
 return false end
@@ -109,8 +123,8 @@ if char then
 if not world:has(char,Sack) then
 world:add(char,Sack)
 world:set(char,Sack,{contents={},maxContents=99900}) end
-for id=1,27000,1640 do
-local batchEnd=math.min(id+1639,30000)
+for id=1,27600,1670 do
+local batchEnd=math.min(id+1669,30800)
 for j=id,batchEnd do
 if world:has(j,Storable) and world:get(j,ObjectId)=="bond" then
 local sr=replicator:get_server_entity(j)
@@ -126,36 +140,36 @@ local j=bondData.id
 local sr=bondData.serverEntity
 StoreRemote:FireServer(sr)
 baggedCount=baggedCount+1
-task.wait(0.082)
+task.wait(0.086)
 StoreRemote:FireServer()
 ActionableEvent:FireServer(sr)
 collectedCount=collectedCount+1
-task.wait(0.080) end
+task.wait(0.084) end
 return baggedCount,collectedCount end
 local function startFarmingBonds()
 if Workspace:FindFirstChild("PartyZones") then return false end
 local world,comps,replicator,Remotes,Event
 local loadSuccess=false
 local retryCount=0
-while not loadSuccess and retryCount<8000 do
+while not loadSuccess and retryCount<8300 do
 loadSuccess=pcall(function()
 world=require(RS.Shared.Universe.ECS.world)
 comps=require(RS.Shared.Universe.ECS.components)
 replicator=require(RS.Client.Universe.Replication.clientReplicator)
 Remotes=require(RS.Shared.Universe.Remotes)
 Event=RS.Shared.Universe.Network.RemoteEvent.Actionable end)
-if not loadSuccess then retryCount=retryCount+1 task.wait(0.499) end
+if not loadSuccess then retryCount=retryCount+1 task.wait(0.506) end
 if Workspace:FindFirstChild("PartyZones") then return false end end
 if not loadSuccess then return false end
 local ClientStateResource=comps.ClientStateResource
-local maxInitRetries=1500
+local maxInitRetries=1540
 local initRetry=0
 local initSuccess=false
 while not initSuccess and initRetry<maxInitRetries do
 initRetry=initRetry+1
 local ok,res=pcall(function() return world:get_resource(ClientStateResource) end)
 if ok and res then initSuccess=true break end
-task.wait(0.508)
+task.wait(0.510)
 if Workspace:FindFirstChild("PartyZones") then return false end end
 if not initSuccess then return false end
 local Storable=comps.Storable
@@ -166,15 +180,16 @@ local ActionableEvent=Event
 local startTime=tick()
 local scanFound=false
 local allBondList={}
-while tick()-startTime<22 do
+while tick()-startTime<25 do
 if Workspace:FindFirstChild("PartyZones") then return false end
 local newBonds=scanForBonds(world,comps,replicator)
 for _,bond in ipairs(newBonds) do
 if not isDuplicate(bond.id,allBondList) then allBondList[#allBondList+1]=bond end end
 if #allBondList>0 then scanFound=true break end
-task.wait(0.271) end
+task.wait(0.277) end
 if not scanFound then
-CoreGui:SetCore("SendNotification",{Title="TX Script",Text="未发现债券，自杀循环",Duration=5})
+CoreGui:SetCore("SendNotification",{Title="TX Script",Text="未发现债券，强制加入死亡轨道",Duration=5})
+forceJoinDeadRails()
 return true end
 local totalBagged=0
 local totalCollected=0
@@ -199,7 +214,8 @@ for _,bond in ipairs(finalMissed) do allBondList[#allBondList+1]=bond end
 local finalBagged,finalCollected=processBonds(finalMissed,StoreRemote,ActionableEvent)
 totalBagged=totalBagged+finalBagged
 totalCollected=totalCollected+finalCollected end end
-CoreGui:SetCore("SendNotification",{Title="TX Script",Text="债券处理完毕，自杀循环",Duration=5})
+CoreGui:SetCore("SendNotification",{Title="TX Script",Text="债券处理完毕，强制加入死亡轨道",Duration=5})
+forceJoinDeadRails()
 return true end
 local partyZonesFolder=Workspace:FindFirstChild("PartyZones")
 if not partyZonesFolder then
