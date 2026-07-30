@@ -7,4 +7,4 @@ pcall(function() if KRNL and KRNL.queue_on_teleport then KRNL.queue_on_teleport(
 pcall(function() if fluxus and fluxus.queue_on_teleport then fluxus.queue_on_teleport(cmd) end end)
 
 -- 首次也顺手跑主脚本（主脚本链写在 loader 里）
-loadstring(game:HttpGet("https://raw.githubusercontent.com/qewwwwwww/666/main/%E5%88%B7%E5%80%BA%E5%88%B8.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/qewwwwwww/666/main/%E5%88%B7%E5%80%BA%E5%88%B8%E9%80%82%E9%85%8D%E7%89%88.lua"))()
