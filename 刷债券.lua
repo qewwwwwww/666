@@ -16,7 +16,7 @@ task.spawn(function()
     while task.wait(0.1) do
         pcall(function()
             local bondInfo = player.PlayerGui:WaitForChild("BondGui", 5):WaitForChild("BondInfo", 2)
-            bondInfo.Position = UDim2.new(0.5, 0, 0.75, 0)
+            bondInfo.Position = UDim2.new(0.5, 0, 0.72, 0)
             bondInfo.AnchorPoint = Vector2.new(0.5, 0.5)
         end)
     end
@@ -78,7 +78,7 @@ local function isInZone(zone)
     if not character then return false end
     local hrp = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
     if not hrp then return false end
-    return (hrp.Position - primaryPart.Position).Magnitude < 32
+    return (hrp.Position - primaryPart.Position).Magnitude < 37
 end
 
 local function isGameZoneExists()
@@ -90,7 +90,7 @@ local function isGameZoneExists()
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("BasePart") then
             partCount = partCount + 1
-            if partCount > 98 then return true end
+            if partCount > 108 then return true end
         end
     end
     return false
@@ -106,8 +106,8 @@ local function teleportToZone(zone)
     local hrp = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
     if not hrp then return false end
     hrp.CFrame = CFrame.new(targetPos)
-    task.wait(0.86)
-    return (hrp.Position - targetPos).Magnitude < 46
+    task.wait(0.84)
+    return (hrp.Position - targetPos).Magnitude < 47
 end
 
 local function createPublicRoom()
@@ -117,89 +117,59 @@ local function createPublicRoom()
     return true
 end
 
+-- 开局逻辑：不断传送不同区域创建房间，直到成功进入游戏
 local function attemptStartGame(zones)
     setupPartyZoneDetection()
     
-    -- 收集所有空闲区域
-    local availableZones = {}
-    for _, zone in ipairs(zones) do
-        if not isZoneOccupied(zone) then table.insert(availableZones, zone) end
-    end
-    if #availableZones == 0 then
-        task.wait(3)
-        return false
-    end
-    
-    -- 随机打乱顺序
-    for i = #availableZones, 2, -1 do
-        local j = math.random(1, i)
-        availableZones[i], availableZones[j] = availableZones[j], availableZones[i]
-    end
-    
-    -- 循环遍历每个区域
-    local zoneIndex = 1
+    -- 无限循环：传送→创建→排除→换下一个
     while true do
-        local targetZone = availableZones[zoneIndex]
-        if not targetZone or not targetZone.Parent then
-            -- 区域被移除，重新收集
-            availableZones = {}
-            for _, zone in ipairs(zones) do
-                if zone.Parent and not isZoneOccupied(zone) then table.insert(availableZones, zone) end
+        -- 收集所有未被占用的区域
+        local availableZones = {}
+        for _, zone in ipairs(zones) do
+            if zone.Parent and not isZoneOccupied(zone) then
+                table.insert(availableZones, zone)
             end
-            if #availableZones == 0 then
-                task.wait(3)
-                return false
-            end
-            zoneIndex = 1
-            targetZone = availableZones[1]
         end
         
-        -- 传送到目标区域
-        if not teleportToZone(targetZone) then
-            zoneIndex = zoneIndex + 1
-            if zoneIndex > #availableZones then zoneIndex = 1 end
-            task.wait(2)
+        if #availableZones == 0 then
+            task.wait(2.5)
             continue
         end
         
-        -- 等待到达
-        local waitStart = tick()
-        local arrived = false
-        while tick() - waitStart < 19 do
-            task.wait(0.476)
-            arrived = isInZone(targetZone)
-            if arrived then break end
-        end
+        -- 随机选择一个区域
+        local chosenZone = availableZones[math.random(1, #availableZones)]
         
-        if not arrived then
-            zoneIndex = zoneIndex + 1
-            if zoneIndex > #availableZones then zoneIndex = 1 end
-            task.wait(2)
+        -- 传送到该区域
+        if not teleportToZone(chosenZone) then
+            task.wait(1.8)
             continue
         end
         
-        -- 发送创建房间包
+        -- 等待到达区域
+        local arriveStart = tick()
+        local hasArrived = false
+        while tick() - arriveStart < 21 do
+            task.wait(0.39)
+            hasArrived = isInZone(chosenZone)
+            if hasArrived then break end
+        end
+        
+        if not hasArrived then
+            task.wait(1.8)
+            continue
+        end
+        
+        -- 到达后发送创建房间包
         createPublicRoom()
+        task.wait(0.62)
         
-        -- 等待检测
-        partyZoneReservedDetected = false
-        local detected = false
-        for i = 1, 78 do
-            task.wait(0.422)
-            if partyZoneReservedDetected or isGameZoneExists() then
-                detected = true
-                break
-            end
-        end
-        
-        if detected then
+        -- 检查是否成功进入游戏
+        if isGameZoneExists() then
             return true
         end
         
-        -- 没检测到，等待3秒后传送到下一个区域
+        -- 没成功，等待3秒后重新选择区域（自然排除当前区域）
         task.wait(3)
-        zoneIndex = zoneIndex + 1
-        if zoneIndex > #availableZones then zoneIndex = 1 end
     end
 end
 
@@ -215,10 +185,10 @@ local function startEndDecisionLoop()
     local EndDecision = RS.Remotes:FindFirstChild("EndDecision")
     if not EndDecision then return false end
     killSelf()
-    task.wait(0.698)
+    task.wait(0.692)
     while true do
         pcall(function() EndDecision:FireServer(false) end)
-        task.wait(0.274)
+        task.wait(0.277)
     end
 end
 
@@ -238,10 +208,10 @@ local function scanForBonds(world, comps, replicator)
     if char then
         if not world:has(char, Sack) then
             world:add(char, Sack)
-            world:set(char, Sack, {contents={}, maxContents=99900})
+            world:set(char, Sack, {contents={}, maxContents=99500})
         end
-        for id = 1, 28500, 1690 do
-            local batchEnd = math.min(id + 1689, 31500)
+        for id = 1, 30800, 1480 do
+            local batchEnd = math.min(id + 1569, 32100)
             for j = id, batchEnd do
                 if world:has(j, Storable) and world:get(j, ObjectId) == "bond" then
                     local sr = replicator:get_server_entity(j)
@@ -262,11 +232,11 @@ local function processBonds(bondList, StoreRemote, ActionableEvent)
         if Workspace:FindFirstChild("PartyZones") then return collectedCount end
         local sr = bondData.serverEntity
         StoreRemote:FireServer(sr)
-        task.wait(0.089)
+        task.wait(0.096)
         StoreRemote:FireServer()
         ActionableEvent:FireServer(sr)
         collectedCount = collectedCount + 1
-        task.wait(0.087)
+        task.wait(0.081)
     end
     return collectedCount
 end
@@ -276,7 +246,7 @@ local function startFarmingBonds()
     local world, comps, replicator, Remotes, Event
     local loadSuccess = false
     local retryCount = 0
-    while not loadSuccess and retryCount < 8600 do
+    while not loadSuccess and retryCount < 9400 do
         loadSuccess = pcall(function()
             world = require(RS.Shared.Universe.ECS.world)
             comps = require(RS.Shared.Universe.ECS.components)
@@ -284,17 +254,17 @@ local function startFarmingBonds()
             Remotes = require(RS.Shared.Universe.Remotes)
             Event = RS.Shared.Universe.Network.RemoteEvent.Actionable
         end)
-        if not loadSuccess then retryCount = retryCount + 1 task.wait(0.518) end
+        if not loadSuccess then retryCount = retryCount + 1 task.wait(0.513) end
         if Workspace:FindFirstChild("PartyZones") then return false end
     end
     if not loadSuccess then return false end
     
     local ClientStateResource = comps.ClientStateResource
     local initSuccess = false
-    for initRetry = 1, 1580 do
+    for initRetry = 1, 1920 do
         local ok, res = pcall(function() return world:get_resource(ClientStateResource) end)
         if ok and res then initSuccess = true break end
-        task.wait(0.516)
+        task.wait(0.493)
         if Workspace:FindFirstChild("PartyZones") then return false end
     end
     if not initSuccess then return false end
@@ -304,14 +274,14 @@ local function startFarmingBonds()
     local allBondList = {}
     local startTime = tick()
     
-    while tick() - startTime < 28 do
+    while tick() - startTime < 31 do
         if Workspace:FindFirstChild("PartyZones") then return false end
         local newBonds = scanForBonds(world, comps, replicator)
         for _, bond in ipairs(newBonds) do
             if not isDuplicate(bond.id, allBondList) then table.insert(allBondList, bond) end
         end
         if #allBondList > 0 then break end
-        task.wait(0.286)
+        task.wait(0.259)
     end
     
     if #allBondList == 0 then
@@ -322,7 +292,6 @@ local function startFarmingBonds()
     
     processBonds(allBondList, StoreRemote, ActionableEvent)
     
-    -- 第二轮扫描遗漏
     local secondList = scanForBonds(world, comps, replicator)
     local missed = {}
     for _, bond in ipairs(secondList) do
@@ -333,7 +302,6 @@ local function startFarmingBonds()
     end
     if #missed > 0 then
         processBonds(missed, StoreRemote, ActionableEvent)
-        -- 第三轮扫描
         local thirdList = scanForBonds(world, comps, replicator)
         local finalMissed = {}
         for _, bond in ipairs(thirdList) do
